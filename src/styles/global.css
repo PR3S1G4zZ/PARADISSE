@@ -5,10 +5,22 @@ body {
   min-width: 320px;
   background: var(--color-paper);
   color: var(--color-ink);
+  line-height: 1.5;
 }
 
 main {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 3rem 1.25rem;
+  padding: 2rem 1.25rem;
+}
+
+button,
+input { font: inherit; }
+
+@media (min-width: 768px) {
+  main { padding: 3rem 2rem; }
+}
+
+@media (min-width: 1120px) {
+  main { padding-inline: 0; }
 }
