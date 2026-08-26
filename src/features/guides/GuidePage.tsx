@@ -25,7 +25,7 @@ export function GuidePage({ municipalitySlug: propSlug, category: propCategory }
   const municipality = getMunicipality(municipalitySlug);
   const validCategory = category === 'cultura-historia' || category === 'gastronomia';
   const experiences = validCategory ? getGuides(municipalitySlug, category) : [];
-  const [addedIds, setAddedIds] = useState<string[]>([]);
+  const [addedIds, setAddedIds] = useState<string[]>(() => planService.getPlan().experiences);
 
   const addExperience = (guide: GuideExperience) => {
     planService.addExperience(guide.id);
