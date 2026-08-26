@@ -15,19 +15,24 @@ function renderApp(path: string) {
 }
 
 test.each([
-  ['/', /bienvenido a paradisse/i],
-  ['/nosotros', /^nosotros$/i],
-  ['/destinos', /^destinos$/i],
-  ['/destinos/jerico', /detalle del destino/i],
-  ['/guias/jerico/comida', /guía de viaje/i],
-  ['/registro', /^regístrate$/i],
-  ['/iniciar-sesion', /iniciar sesión/i],
-  ['/pago', /^pago$/i],
-  ['/inexistente', /página no encontrada/i],
-])('renders the route %s', (path, title) => {
+  ['/', /donde cada viaje es una aventura/i],
+  ['/nosotros', /quiénes somos/i],
+  ['/destinos', /encuentra tu próximo destino/i],
+  ['/destinos/jardin', /jardín/i],
+  ['/guias/jardin/gastronomia', /gastronomía/i],
+  ['/registro', /crea tu cuenta/i],
+  ['/iniciar-sesion', /bienvenido de nuevo/i],
+  ['/pago', /inicia sesión para confirmar tu visita/i],
+])('renders a real screen for %s', (path, heading) => {
   const container = renderApp(path);
 
-  expect(container.querySelector('h1')?.textContent).toMatch(title);
+  expect(container.textContent).toMatch(heading);
+});
+
+test('renders a not-found screen for an unknown route', () => {
+  const container = renderApp('/inexistente');
+
+  expect(container.querySelector('h1')?.textContent).toMatch(/página no encontrada/i);
 });
 
 test('navigates with a header link without leaving the app', () => {
@@ -39,5 +44,5 @@ test('navigates with a header link without leaving the app', () => {
   });
 
   expect(window.location.pathname).toBe('/destinos');
-  expect(container.querySelector('h1')?.textContent).toMatch(/^destinos$/i);
+  expect(container.textContent).toMatch(/encuentra tu próximo destino/i);
 });

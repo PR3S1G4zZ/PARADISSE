@@ -1,6 +1,13 @@
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { EmptyState } from '../shared/ui/EmptyState';
 import { PageLayout } from '../shared/layout/PageLayout';
+import { AboutPage } from '../features/about/AboutPage';
+import { AuthPage } from '../features/auth/AuthPage';
+import { CheckoutPage } from '../features/checkout/CheckoutPage';
+import { DestinationPage } from '../features/destinations/DestinationPage';
+import { DestinationsPage } from '../features/destinations/DestinationsPage';
+import { GuidePage } from '../features/guides/GuidePage';
+import { HomePage } from '../features/home/HomePage';
 
 export type RoutePath =
   | '/'
@@ -12,23 +19,9 @@ export type RoutePath =
   | '/iniciar-sesion'
   | '/pago';
 
-function PlaceholderPage({ title }: { title: string }) {
-  return <EmptyState title={title} description="Esta sección estará disponible próximamente." />;
-}
-
-function HomePage() { return <PlaceholderPage title="Bienvenido a PARADISSE" />; }
-function AboutPage() { return <PlaceholderPage title="Nosotros" />; }
-function DestinationsPage() { return <PlaceholderPage title="Destinos" />; }
-function DestinationPage() { return <PlaceholderPage title="Detalle del destino" />; }
-function GuidePage() { return <PlaceholderPage title="Guía de viaje" />; }
-function RegisterPage() { return <PlaceholderPage title="Regístrate" />; }
-function LoginPage() { return <PlaceholderPage title="Iniciar sesión" />; }
-function PaymentPage() { return <PlaceholderPage title="Pago" />; }
 function NotFoundPage() {
   return <EmptyState title="Página no encontrada" description="La ruta solicitada no existe." />;
 }
-
-export { NavLink };
 
 export function App({ initialPath }: { initialPath?: string } = {}) {
   if (initialPath && typeof window !== 'undefined' && window.location.pathname !== initialPath) {
@@ -44,9 +37,9 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
           <Route path="/destinos" element={<DestinationsPage />} />
           <Route path="/destinos/:slug" element={<DestinationPage />} />
           <Route path="/guias/:slug/:category" element={<GuidePage />} />
-          <Route path="/registro" element={<RegisterPage />} />
-          <Route path="/iniciar-sesion" element={<LoginPage />} />
-          <Route path="/pago" element={<PaymentPage />} />
+          <Route path="/registro" element={<AuthPage mode="register" />} />
+          <Route path="/iniciar-sesion" element={<AuthPage mode="login" />} />
+          <Route path="/pago" element={<CheckoutPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </PageLayout>
