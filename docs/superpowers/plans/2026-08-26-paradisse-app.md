@@ -413,3 +413,58 @@ git commit -m "feat: complete local checkout and responsive visual system"
 - Spec coverage: Tasks 1–2 implement types and persistence; Tasks 3–5 implement every exploration and guide journey; Tasks 6–7 implement access, local payment, errors, responsive design and verification.
 - Placeholder scan: no deferred requirements or unspecified behaviors remain.
 - Type consistency: services consume `StorageAdapter`; routes use the declared slugs and category names; checkout consumes plan/session from prior tasks.
+
+### Task 8: Implement Home, Nosotros and route integration
+
+**Files:**
+- Create: `src/features/home/HomePage.tsx`, `src/features/home/home.css`
+- Create: `src/features/about/AboutPage.tsx`, `src/features/about/about.css`
+- Modify: `src/app/router.tsx`, `src/app/router.test.tsx`
+
+**Interfaces:**
+- Consumes exported pages from Tasks 4–7 and `municipalities`/`guides` data.
+- Produces fully wired routes for every screen in the specification, including Inicio and Nosotros.
+
+- [ ] **Step 1: Write failing integration tests**
+
+```tsx
+test.each([
+  ['/', /donde cada viaje es una aventura/i],
+  ['/nosotros', /quiénes somos/i],
+  ['/destinos', /municipios del suroeste/i],
+  ['/destinos/jardin', /jardín/i],
+  ['/guias/jardin/gastronomia', /gastronomía/i],
+  ['/registro', /crear tu cuenta/i],
+  ['/iniciar-sesion', /bienvenido de nuevo/i],
+  ['/pago', /plan de visita/i],
+])('renders a real screen for %s', (path, heading) => {
+  render(<App initialPath={path} />);
+  expect(screen.getByText(heading)).toBeInTheDocument();
+});
+```
+
+- [ ] **Step 2: Verify tests fail**
+
+Run: `npm test -- router.test.tsx`
+
+Expected: FAIL because placeholders still render for several routes.
+
+- [ ] **Step 3: Implement and wire real pages**
+
+Build Home from the Figma hero, regional facts, municipality highlights, map
+panel and footer CTA. Build Nosotros from mission, vision and differentiators.
+Replace every placeholder route element with the exported feature component;
+keep the existing route paths and shared layout.
+
+- [ ] **Step 4: Verify all route integration**
+
+Run: `npm test -- router.test.tsx && npm test && npm run build`
+
+Expected: all tests and production build pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/features/home src/features/about src/app/router.tsx src/app/router.test.tsx
+git commit -m "feat: wire complete Paradisse screen flows"
+```
