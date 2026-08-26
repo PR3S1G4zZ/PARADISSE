@@ -20,7 +20,7 @@ export function HomePage() {
         </div>
         <img
           className="home-hero__image"
-          src="/assets/paradisse-hero.png"
+          src="/assets/suroeste-landscape.png"
           alt="Paisaje del Suroeste Antioqueño"
         />
       </section>
@@ -69,7 +69,18 @@ export function HomePage() {
           <p>Ubica los municipios y deja que una conversación, un aroma o un paisaje marque el siguiente destino.</p>
           <Link className="home-text-link" to="/destinos">Explorar el Suroeste</Link>
         </div>
-        <img src="/assets/suroeste-map.png" alt="Mapa ilustrado de municipios del Suroeste Antioqueño" />
+        <div className="home-map__visual">
+          <img src="/assets/suroeste-map.png" alt="Mapa ilustrado de municipios del Suroeste Antioqueño" />
+          <nav className="home-map__controls" aria-label="Municipios en el mapa">
+            <ul>
+              {municipalities.map((municipality) => (
+                <li key={municipality.slug}>
+                  <Link to={`/destinos/${municipality.slug}`}>Ver {municipality.name} en el mapa</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
       </section>
 
       <section className="home-cta" aria-labelledby="home-cta-title">

@@ -27,7 +27,12 @@
 .home-destination-card p { color: #666355; margin: .6rem 0 1rem; }
 .home-map { align-items: center; background: #e9eee0; display: grid; gap: 2rem; padding: clamp(1.5rem, 5vw, 4rem); }
 .home-map__content p:not(.home-eyebrow) { color: #5d6251; margin: 1rem 0 1.5rem; max-width: 35rem; }
-.home-map > img { justify-self: center; max-width: 31rem; width: 100%; }
+.home-map__visual { justify-self: center; max-width: 31rem; position: relative; width: 100%; }
+.home-map__visual > img { display: block; width: 100%; }
+.home-map__controls { bottom: .65rem; left: .65rem; position: absolute; right: .65rem; }
+.home-map__controls ul { display: grid; gap: .35rem; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.home-map__controls a { background: rgb(48 52 38 / 92%); border-radius: 999px; color: #fff; display: block; font-size: .72rem; font-weight: 750; padding: .4rem .55rem; text-align: center; text-decoration: none; }
+.home-map__controls a:hover { background: var(--color-olive-dark); }
 .home-cta { background: var(--color-olive-dark); color: #fffdf7; display: grid; overflow: hidden; position: relative; }
 .home-cta > img { height: 100%; inset: 0; object-fit: cover; opacity: .22; position: absolute; width: 100%; }
 .home-cta > div { padding: clamp(2rem, 6vw, 4.5rem); position: relative; }
@@ -37,4 +42,4 @@
 .home-button--light:hover { background: #f0eadb; }
 .home-button:focus-visible, .home-page a:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 3px; }
 @media (min-width: 760px) { .home-hero { grid-template-columns: 1.08fr .92fr; min-height: 32rem; } .home-map { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 759px) { .home-facts { grid-template-columns: 1fr; } .home-facts article + article { border-left: 0; border-top: 1px solid #d9d1bf; } .home-section-heading { align-items: start; flex-direction: column; } .home-destination-grid { grid-template-columns: 1fr; } }
+@media (max-width: 759px) { .home-facts { grid-template-columns: 1fr; } .home-facts article + article { border-left: 0; border-top: 1px solid #d9d1bf; } .home-section-heading { align-items: start; flex-direction: column; } .home-destination-grid { grid-template-columns: 1fr; } .home-map__controls { position: static; margin-top: .75rem; } }

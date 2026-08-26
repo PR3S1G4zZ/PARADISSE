@@ -17,7 +17,7 @@ export function AboutPage() {
       </header>
 
       <section className="about-story" aria-labelledby="about-story-title">
-        <img src="/assets/paradisse-hero.png" alt="Montañas y naturaleza del Suroeste Antioqueño" />
+        <img src="/assets/suroeste-landscape.png" alt="Montañas y naturaleza del Suroeste Antioqueño" />
         <div>
           <p className="about-eyebrow">Nuestra historia</p>
           <h2 id="about-story-title">Nacimos para que viajar vuelva a sentirse personal</h2>
