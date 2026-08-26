@@ -1,0 +1,9 @@
+:root {
+  --color-olive: #657044;
+  --color-gold: #c79a4a;
+  --color-ink: #24251f;
+  --color-paper: #f8f6f0;
+  --radius-card: 1rem;
+  --space-unit: 0.25rem;
+  font-family: 'Montserrat', system-ui, sans-serif;
+}
