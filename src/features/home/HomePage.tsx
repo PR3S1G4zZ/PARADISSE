@@ -36,7 +36,7 @@ export function HomePage() {
 
       <section className="home-facts" aria-label="Datos de la región">
         <article><strong>{municipalities.length}</strong><span>municipios para descubrir</span></article>
-        <article><strong>{guides.length}</strong><span>experiencias para tu visita</span></article>
+        <article><strong>{guides.length}</strong><span>guías para tu visita</span></article>
         <article><strong>1</strong><span>ruta hecha a tu medida</span></article>
       </section>
 

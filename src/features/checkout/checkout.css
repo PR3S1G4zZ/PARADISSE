@@ -191,6 +191,18 @@
 .checkout-submit:hover,
 .checkout-link:hover { background: var(--color-olive-dark); }
 
+.checkout-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.checkout-text-link {
+  color: var(--color-olive);
+  font-weight: 800;
+}
+
 .checkout-confirmation {
   background: color-mix(in srgb, var(--color-olive) 11%, white);
   border: 1px solid color-mix(in srgb, var(--color-olive) 42%, transparent);

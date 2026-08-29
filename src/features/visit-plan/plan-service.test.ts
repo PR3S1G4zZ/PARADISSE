@@ -16,3 +16,21 @@ test('adding the same favorite twice removes it', () => {
   plan.toggleFavorite('jardin');
   expect(plan.getPlan().favorites).toEqual([]);
 });
+
+test('adding the same municipality twice persists it once', () => {
+  const plan = createPlanService(memoryStorage());
+
+  plan.addMunicipality('jardin');
+  plan.addMunicipality('jardin');
+
+  expect(plan.getPlan().municipalities).toEqual(['jardin']);
+});
+
+test('adding the same experience twice persists it once', () => {
+  const plan = createPlanService(memoryStorage());
+
+  plan.addExperience('jardin-cafe');
+  plan.addExperience('jardin-cafe');
+
+  expect(plan.getPlan().experiences).toEqual(['jardin-cafe']);
+});

@@ -22,3 +22,17 @@ test('confirms a local reservation with the selected method', () => {
   expect(result.method).toBe('tarjeta');
   expect(result.status).toBe('local-confirmed');
 });
+
+test('persists a local confirmation so a new service can rehydrate it', () => {
+  const storage = memoryStorage();
+  createAuthService(storage).registerLocal({ name: 'Ana', email: 'ana@example.com', password: 'secreto1' });
+  createPlanService(storage).addExperience('jardin-cafe');
+  const contact = { name: 'Ana Pérez', email: 'ana@example.com', phone: '3001234567' };
+
+  const confirmation = createCheckoutService(storage).confirmLocalCheckout('transferencia', contact);
+  const rehydrated = createCheckoutService(storage).getConfirmation();
+
+  expect(rehydrated).toEqual(confirmation);
+  expect(rehydrated?.contact).toEqual(contact);
+  expect(rehydrated?.plan.experiences).toEqual(['jardin-cafe']);
+});

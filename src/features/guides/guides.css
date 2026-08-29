@@ -12,5 +12,6 @@
 .guide-card button:disabled { background: #54715f; cursor: default; }
 .guide-page__links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
 .guide-page__links a, .guide-page--empty a { color: inherit; font-weight: 700; }
+.guide-page__empty { background: var(--color-surface, #fff); border-radius: 12px; padding: 1rem; }
 .guide-page--empty { padding: 3rem 1.25rem; }
 @media (max-width: 600px) { .guide-card__image { height: 150px; } }

@@ -2,6 +2,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import App from './App';
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 type SupportedRole = 'heading' | 'img' | 'link';
 
 const screen = {
@@ -90,4 +92,35 @@ test('navigates with a header link without leaving the app', () => {
 
   expect(window.location.pathname).toBe('/destinos');
   expect(screen.getByRole('heading', { name: /encuentra tu próximo destino/i })).toBeTruthy();
+});
+
+test('makes login reachable from the header', () => {
+  renderApp('/');
+
+  expect(screen.getByRole('link', { name: /^iniciar sesión$/i }).getAttribute('href')).toBe('/iniciar-sesion');
+});
+
+test('navigates home through the logo without leaving the app', () => {
+  renderApp('/destinos');
+  const logo = screen.getByRole('link', { name: /^paradisse$/i });
+
+  act(() => {
+    logo.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  });
+
+  expect(screen.getByRole('heading', { name: /donde cada viaje es una aventura/i })).toBeTruthy();
+});
+
+test.each(['/registro', '/guias/jardin/gastronomia'])('keeps a single main landmark on %s', (path) => {
+  renderApp(path);
+
+  expect(document.querySelectorAll('main')).toHaveLength(1);
+});
+
+test('labels the guide counter as guides instead of destination experiences', () => {
+  renderApp('/');
+  const facts = document.querySelector<HTMLElement>('.home-facts');
+
+  expect(facts?.textContent).toMatch(/guías para tu visita/i);
+  expect(facts?.textContent).not.toMatch(/experiencias para tu visita/i);
 });

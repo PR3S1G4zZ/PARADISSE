@@ -72,7 +72,7 @@ export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
   const action = isRegistering ? 'Crear cuenta' : 'Iniciar sesión';
 
   return (
-    <main className="auth-page">
+    <section className="auth-page">
       <section className="auth-card" aria-labelledby="auth-title">
         <p className="auth-brand">PARADISSE</p>
         <h1 id="auth-title">{title}</h1>
@@ -151,6 +151,6 @@ export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
           </Button>
         </form>
       </section>
-    </main>
+    </section>
   );
 }

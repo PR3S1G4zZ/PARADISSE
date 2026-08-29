@@ -38,7 +38,7 @@ export function CheckoutPage() {
   });
   const [method, setMethod] = useState<CheckoutMethod>('tarjeta');
   const [contact, setContact] = useState({ name: session?.name ?? '', email: session?.email ?? '', phone: '' });
-  const [confirmation, setConfirmation] = useState<LocalCheckoutConfirmation | null>(null);
+  const [confirmation, setConfirmation] = useState<LocalCheckoutConfirmation | null>(() => checkout.getConfirmation());
 
   if (!session) {
     return (
@@ -47,7 +47,10 @@ export function CheckoutPage() {
           <p className="checkout-eyebrow">Reserva PARADISSE</p>
           <h1 id="checkout-title">Inicia sesión para confirmar tu visita</h1>
           <p>Guardaremos tu selección en este dispositivo y te mostraremos una confirmación local.</p>
-          <Link className="checkout-link" to="/registro">Crear una cuenta o iniciar sesión</Link>
+          <div className="checkout-actions">
+            <Link className="checkout-link" to="/registro">Crear una cuenta</Link>
+            <Link className="checkout-text-link" to="/iniciar-sesion">Ya tengo una cuenta</Link>
+          </div>
         </div>
       </section>
     );
@@ -55,7 +58,7 @@ export function CheckoutPage() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setConfirmation(checkout.confirmLocalCheckout(method));
+    setConfirmation(checkout.confirmLocalCheckout(method, contact));
   };
 
   return (

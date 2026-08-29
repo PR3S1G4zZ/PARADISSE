@@ -27,6 +27,13 @@ export const createPlanService = (storage: StorageAdapter) => {
         : [...plan.favorites, experienceId];
       return save({ ...plan, favorites });
     },
+    addMunicipality: (municipalitySlug: string): VisitPlan => {
+      const plan = getPlan();
+      const municipalities = plan.municipalities.includes(municipalitySlug)
+        ? plan.municipalities
+        : [...plan.municipalities, municipalitySlug];
+      return save({ ...plan, municipalities });
+    },
     addExperience: (experienceId: string): VisitPlan => {
       const plan = getPlan();
       const experiences = plan.experiences.includes(experienceId)

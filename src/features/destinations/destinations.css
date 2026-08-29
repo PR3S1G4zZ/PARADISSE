@@ -92,7 +92,8 @@
 }
 
 .favorite-button,
-.visit-cta {
+.visit-cta,
+.experience-card__add {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
@@ -111,6 +112,17 @@
   background: var(--color-olive);
   color: white;
   justify-self: start;
+}
+
+.experience-card__add {
+  background: var(--color-olive);
+  color: white;
+  justify-self: start;
+}
+
+.experience-card__add:disabled {
+  background: #54715f;
+  cursor: default;
 }
 
 .text-link,
@@ -162,6 +174,11 @@
 .guide-links {
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 20%, transparent);
   padding-top: 1.25rem;
+}
+
+.guide-links__empty {
+  color: color-mix(in srgb, var(--color-ink) 72%, var(--color-paper));
+  margin: 0;
 }
 
 .empty-search {
