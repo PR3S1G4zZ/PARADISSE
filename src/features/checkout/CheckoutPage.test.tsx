@@ -61,8 +61,18 @@ test('rehydrates a persisted local confirmation when checkout mounts again', () 
 
   const { container, root } = renderCheckout();
   const status = container.querySelector<HTMLElement>('[role="status"]');
+  const transfer = container.querySelector<HTMLInputElement>('input[name="payment-method"][value="transferencia"]');
+  const card = container.querySelector<HTMLInputElement>('input[name="payment-method"][value="tarjeta"]');
+  const name = container.querySelector<HTMLInputElement>('input[name="name"]');
+  const email = container.querySelector<HTMLInputElement>('input[name="email"]');
+  const phone = container.querySelector<HTMLInputElement>('input[name="phone"]');
 
   expect(status?.textContent).toMatch(/transferencia/i);
+  expect(transfer?.checked).toBe(true);
+  expect(card?.checked).toBe(false);
+  expect(name?.value).toBe('Ana Pérez');
+  expect(email?.value).toBe('ana@example.com');
+  expect(phone?.value).toBe('3001234567');
   act(() => root.unmount());
 });
 

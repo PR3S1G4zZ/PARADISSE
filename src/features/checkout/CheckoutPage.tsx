@@ -36,9 +36,13 @@ export function CheckoutPage() {
     id,
     title: 'Experiencia seleccionada',
   });
-  const [method, setMethod] = useState<CheckoutMethod>('tarjeta');
-  const [contact, setContact] = useState({ name: session?.name ?? '', email: session?.email ?? '', phone: '' });
   const [confirmation, setConfirmation] = useState<LocalCheckoutConfirmation | null>(() => checkout.getConfirmation());
+  const [method, setMethod] = useState<CheckoutMethod>(() => confirmation?.method ?? 'tarjeta');
+  const [contact, setContact] = useState(() => confirmation?.contact ?? {
+    name: session?.name ?? '',
+    email: session?.email ?? '',
+    phone: '',
+  });
 
   if (!session) {
     return (
