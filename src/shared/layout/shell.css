@@ -1,0 +1,218 @@
+.site-header {
+  background: rgb(5 10 8 / 92%);
+  color: #f5f3ec;
+  position: relative;
+  z-index: 10;
+}
+
+.site-header__inner {
+  align-items: center;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 1440px;
+  min-height: 5.25rem;
+  padding: 0.6rem clamp(1.25rem, 5vw, 4.5rem);
+}
+
+.site-header__brand {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  max-width: 8.5rem;
+}
+
+.site-header__brand img {
+  display: block;
+  filter: brightness(0) invert(1);
+  max-height: 3.6rem;
+  object-fit: contain;
+  width: 100%;
+}
+
+.site-header__nav {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 2.6vw, 2.8rem);
+  justify-content: flex-end;
+}
+
+.site-header__nav a {
+  color: rgb(245 243 236 / 82%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  padding: 0.7rem 0;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 180ms ease;
+}
+
+.site-header__nav a:hover,
+.site-header__nav a.active {
+  color: #f0d582;
+}
+
+.site-header__login {
+  border: 1px solid rgb(245 243 236 / 45%);
+  border-radius: 999px;
+  padding: 0.65rem 1rem !important;
+}
+
+.site-header__login:hover,
+.site-header__login.active {
+  border-color: #f0d582;
+}
+
+body:has(.home-page) .site-header,
+body:has(.about-page) .site-header,
+body:has(.destinations-page) .site-header,
+body:has(.destination-detail-page) .site-header {
+  background: linear-gradient(180deg, rgb(4 8 6 / 82%), rgb(4 8 6 / 0%));
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.site-footer {
+  background: #080d0a;
+  isolation: isolate;
+  color: #f5f3ec;
+  min-height: 13rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.site-footer__backdrop,
+.site-footer__shade {
+  inset: 0;
+  position: absolute;
+}
+
+.site-footer__backdrop {
+  background: url('/assets/paradisse-footer.webp') center / cover no-repeat;
+  opacity: 0.5;
+  z-index: -2;
+}
+
+.site-footer__shade {
+  background: linear-gradient(180deg, rgb(5 10 7 / 58%), rgb(5 10 7 / 92%));
+  z-index: -1;
+}
+
+.site-footer__inner {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0 auto;
+  max-width: 1440px;
+  padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 4vw, 4.5rem) 1.3rem;
+  position: relative;
+}
+
+.site-footer__quote {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 54rem;
+  margin: 0;
+}
+
+.site-footer__quote span {
+  color: #f5f3ec;
+  display: block;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-size: clamp(0.85rem, 1.7vw, 1.4rem);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.site-footer__quote em {
+  color: #d6a62e;
+  display: block;
+  font-family: 'Agbalumo', Georgia, serif;
+  font-size: clamp(1.4rem, 3.6vw, 3.2rem);
+  font-style: normal;
+  line-height: 1.08;
+}
+
+.site-footer small {
+  background: rgb(3 6 4 / 84%);
+  color: rgb(245 243 236 / 72%);
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  margin-inline: calc(clamp(1.25rem, 4vw, 4.5rem) * -1);
+  margin-top: 2.7rem;
+  padding: 0.65rem clamp(1.25rem, 4vw, 4.5rem);
+}
+
+.site-header a:focus-visible,
+.site-footer a:focus-visible {
+  outline: 3px solid #f0d582;
+  outline-offset: 4px;
+}
+
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 720px) {
+  .site-header__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-block: 0.8rem 1rem;
+  }
+
+  .site-header__brand {
+    max-width: 7.25rem;
+  }
+
+  .site-header__nav {
+    gap: 0.35rem 1rem;
+    justify-content: flex-start;
+  }
+
+  .site-header__nav a {
+    font-size: 0.61rem;
+    padding-block: 0.35rem;
+  }
+
+  .site-header__login {
+    padding: 0.45rem 0.75rem !important;
+  }
+
+  .site-footer {
+    min-height: 0;
+  }
+
+  .site-footer__inner {
+    gap: 0.25rem;
+    padding: 0.75rem 1rem 0.25rem;
+  }
+
+  .site-footer__quote span {
+    font-size: 0.55rem;
+  }
+
+  .site-footer__quote em {
+    font-size: 0.9rem;
+  }
+
+  .site-footer small {
+    font-size: 0.38rem;
+    margin-inline: -1rem;
+    margin-top: 0.3rem;
+    padding: 0.35rem 1rem;
+  }
+}

@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Agbalumo&family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: 'Montserrat', Arial, sans-serif;
+  line-height: 1.5;
+}
+
+.site-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.site-main:has(.home-page) {
+  max-width: none;
+  padding: 0;
+}
+
+.site-main:has(.about-page) {
+  max-width: none;
+  padding: 0;
+}
+
+.site-main:has(.destinations-page) {
+  max-width: none;
+  padding: 0;
+}
+
+.site-main:has(.destination-detail-page) {
+  max-width: none;
+  padding: 0;
+}
+
+button,
+input { font: inherit; }
+
+@media (min-width: 768px) {
+  .site-main { padding: 3rem 2rem; }
+  .site-main:has(.home-page) { padding: 0; }
+  .site-main:has(.about-page) { padding: 0; }
+  .site-main:has(.destinations-page) { padding: 0; }
+  .site-main:has(.destination-detail-page) { padding: 0; }
+}
+
+@media (min-width: 1120px) {
+  .site-main { padding-inline: 0; }
+}

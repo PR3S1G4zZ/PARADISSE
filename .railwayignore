@@ -1,0 +1,17 @@
+node_modules/
+node_modules*
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+.git/
+.superpowers/
+docs/
+design-qa.md
+public/assets/*.png
+public/assets/*.jpg
+public/assets/*.jpeg

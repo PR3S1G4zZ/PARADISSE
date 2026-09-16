@@ -1,0 +1,15 @@
+node_modules/
+node_modules*
+dist/
+*.tsbuildinfo
+.railway/
+.superpowers/
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+public/assets/*.png
+public/assets/*.jpg
+public/assets/*.jpeg
