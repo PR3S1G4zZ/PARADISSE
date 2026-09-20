@@ -18,6 +18,7 @@ import { useNavigationFrame } from '../navigation/useNavigationFrame';
 import { useNavigationCamera } from '../navigation/useNavigationCamera';
 import { useAnimatedPosition } from '../navigation/useAnimatedPosition';
 import { applyArcgisBasemapStyle } from './arcgis-basemap';
+import { attachMapWebGlLifecycle, hasWebGl } from './webgl-support';
 import './interactive-map.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -79,17 +80,6 @@ const BASEMAP_REASON_LABELS: Record<string, string> = {
 const basemapReasonLabel = (reason: string | null) => reason
   ? BASEMAP_REASON_LABELS[reason] ?? 'ArcGIS no disponible; se usa OSM.'
   : null;
-
-const hasWebGl = () => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-  if (typeof window.WebGLRenderingContext === 'undefined') return false;
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-  } catch {
-    return false;
-  }
-};
 
 const toMapLibrePoint = ({ lat, lng }: GeoPoint): [number, number] => [lng, lat];
 
@@ -196,6 +186,9 @@ export function InteractiveMap({
   const [providerReason, setProviderReason] = useState<string | null>(null);
   const [provider, setProvider] = useState<'loading' | 'arcgis' | 'osm-fallback'>('loading');
   const [mapReady, setMapReady] = useState(false);
+  const [webglAvailable] = useState(hasWebGl);
+  const [contextLost, setContextLost] = useState(false);
+  const contextLostRef = useRef(false);
   const basemapAttemptRef = useRef<{ map: MapLibreMap; token: string } | null>(null);
   const navigation = useContext(NavegacionContext);
   const localFrame = useNavigationFrame(
@@ -271,6 +264,23 @@ export function InteractiveMap({
   }, [applyArcgisStyle, mapReady, token]);
 
   useEffect(() => {
+    if (!webglAvailable || !mapReady || !mapRef.current) return;
+    const map = mapRef.current.getMap();
+    return attachMapWebGlLifecycle(map, {
+      onLost: () => {
+        contextLostRef.current = true;
+        basemapAttemptRef.current = null;
+        setContextLost(true);
+      },
+      onRestored: () => {
+        contextLostRef.current = false;
+        setContextLost(false);
+        if (token) void applyArcgisStyle(map);
+      },
+    });
+  }, [applyArcgisStyle, mapReady, token, webglAvailable]);
+
+  useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
     if (mode === 'detail' && focusedDestination) {
@@ -294,10 +304,9 @@ export function InteractiveMap({
     </Marker>
   ));
 
-  const canRenderMap = hasWebGl();
-  if (!canRenderMap) {
+  if (!webglAvailable) {
     return (
-      <div className={`interactive-map interactive-map--${mode} ${className}`} data-map-mode={mode} data-provider="osm-fallback">
+      <div className={`interactive-map interactive-map--${mode} ${className}`} data-map-mode={mode} data-provider="osm-fallback" data-webgl-context="unavailable">
         <MapFallback
           destinations={destinations}
           mode={mode}
@@ -311,7 +320,12 @@ export function InteractiveMap({
   }
 
   return (
-    <div className={`interactive-map interactive-map--${mode} ${className}`} data-map-mode={mode} data-provider={provider}>
+    <div
+      className={`interactive-map interactive-map--${mode} ${className}`}
+      data-map-mode={mode}
+      data-provider={provider}
+      data-webgl-context={contextLost ? 'lost' : 'ok'}
+    >
       <Map
         ref={mapRef}
         initialViewState={{ longitude: center[0], latitude: center[1], zoom: mode === 'navigation' ? 17 : 8.5 }}
@@ -322,6 +336,7 @@ export function InteractiveMap({
           void applyArcgisStyle(event.target);
         }}
         onError={() => {
+          if (contextLostRef.current) return;
           useOsmFallback('network');
         }}
         onMoveStart={(event) => {
@@ -379,7 +394,12 @@ export function InteractiveMap({
           <FiCrosshair aria-hidden="true" /> Recentrar
         </button>
       )}
-      {provider === 'osm-fallback' && (
+      {contextLost && (
+        <p className="interactive-map__status" role="status" data-webgl-status="lost">
+          <FiRefreshCw aria-hidden="true" /> El mapa se está recuperando.
+        </p>
+      )}
+      {provider === 'osm-fallback' && !contextLost && (
         <p className="interactive-map__status" role="status">
           <FiRefreshCw aria-hidden="true" /> {basemapReasonLabel(providerReason) ?? 'ArcGIS no disponible; se usa OSM.'}
         </p>
