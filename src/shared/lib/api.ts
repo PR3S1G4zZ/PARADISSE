@@ -1,4 +1,5 @@
 import type { GeoPoint, TravelMode } from '../types/domain';
+import { routeRequestBody } from './route-request';
 
 const API_BASE = import.meta.env.VITE_API_URL
   ?? (import.meta.env.PROD ? '' : 'http://localhost:3001');
@@ -52,9 +53,10 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { Accept: 'application/json', ...(init?.headers ?? {}) },
   });
-  const payload = await response.json().catch(() => ({}));
+  const payload = await response.json().catch(() => ({})) as { error?: unknown };
   if (!response.ok) {
-    const error = new Error(`API HTTP ${response.status}`) as Error & { status?: number };
+    const apiMessage = typeof payload.error === 'string' ? payload.error.trim() : '';
+    const error = new Error(apiMessage || `API HTTP ${response.status}`) as Error & { status?: number };
     error.status = response.status;
     throw error;
   }
@@ -92,7 +94,7 @@ export const rutasApi = {
     method: 'POST',
     signal: options.signal,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ origen, destino, modo, nombreDestino }),
+    body: JSON.stringify(routeRequestBody(origen, destino, modo, nombreDestino)),
   }),
 };
 
