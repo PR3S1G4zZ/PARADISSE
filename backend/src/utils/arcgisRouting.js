@@ -6,9 +6,16 @@ const OAUTH_URL = 'https://www.arcgis.com/sharing/rest/oauth2/token';
 const TRAFFIC_IMPEDANCES = new Set(['traveltime']);
 const STOP_ADJUSTMENT_EPSILON_M = 2;
 const EARTH_RADIUS_M = 6371008.8;
+export const TRAVEL_MODES_TTL_MS = 6 * 60 * 60 * 1000;
+export const EMPTY_TRAVEL_MODES_TTL_MS = 60 * 1000;
 
 let tokenCache = { value: null, expiresAt: 0 };
 let modesCache = { value: null, expiresAt: 0 };
+
+export function resetArcgisRoutingCaches() {
+  tokenCache = { value: null, expiresAt: 0 };
+  modesCache = { value: null, expiresAt: 0 };
+}
 
 const safeErrorCategory = (error) => {
   const name = String(error?.name || '').toLowerCase();
@@ -78,7 +85,7 @@ export async function getArcgisBasemapToken() {
 }
 
 async function travelModes(token) {
-  if (modesCache.value && Date.now() < modesCache.expiresAt) return modesCache.value;
+  if (Array.isArray(modesCache.value) && Date.now() < modesCache.expiresAt) return modesCache.value;
   let modes = [];
 
   // Route_World exposes the complete objects directly in its service
@@ -103,7 +110,12 @@ async function travelModes(token) {
     }
   }
 
-  modesCache = { value: modes, expiresAt: Date.now() + 6 * 60 * 60 * 1000 };
+  // An empty list is a transient provider failure, not a stable catalog.
+  // Caching it for hours made walk solves omit travelMode and default to driving.
+  modesCache = {
+    value: modes,
+    expiresAt: Date.now() + (modes.length > 0 ? TRAVEL_MODES_TTL_MS : EMPTY_TRAVEL_MODES_TTL_MS),
+  };
   return modes;
 }
 
@@ -202,6 +214,9 @@ export function buildRouteStopAdjustments({ origen, destino }, puntos = [], stop
 export async function resolveArcgisRoute({ origen, destino, modo, nombreDestino }) {
   const token = await getArcgisAccessToken();
   const travelMode = selectTravelMode(await travelModes(token), modo);
+  if (modo === 'walk' && !travelMode) {
+    throw new Error('ArcGIS walking travel mode unavailable');
+  }
   const trafficRequested = modo === 'car';
   const trafficApplied = trafficRequested && TRAFFIC_IMPEDANCES.has(String(travelMode?.impedanceAttributeName || '').toLowerCase());
   const warnings = [];
@@ -255,4 +270,4 @@ export async function resolveArcgisRoute({ origen, destino, modo, nombreDestino 
   };
 }
 
-export { ROUTE_SERVICE, TRAVEL_MODES_SERVICE, safeErrorCategory };
+export { ROUTE_SERVICE, TRAVEL_MODES_SERVICE, safeErrorCategory, selectTravelMode, travelModes };

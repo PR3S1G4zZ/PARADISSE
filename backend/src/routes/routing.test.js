@@ -32,6 +32,23 @@ describe('createRouteResolver', () => {
     });
   });
 
+  test('falls back to OSRM foot when ArcGIS cannot resolve a walking mode', async () => {
+    const resolver = createRouteResolver({
+      hasArcgis: () => true,
+      arcgisResolver: async () => { throw new Error('ArcGIS walking travel mode unavailable'); },
+      osrmResolver: async () => ({ ...arcgisRoute, travelModeUtilizado: 'foot' }),
+      onProviderFailure: () => {},
+    });
+
+    await expect(resolver(request)).resolves.toMatchObject({
+      fuente: 'osrm',
+      fallbackAplicado: true,
+      motivo: 'arcgis-fallo',
+      travelModeSolicitado: 'walk',
+      travelModeUtilizado: 'foot',
+    });
+  });
+
   test('falls back to OSRM with safe observability after an ArcGIS failure', async () => {
     const resolver = createRouteResolver({
       hasArcgis: () => true,
