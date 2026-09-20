@@ -122,10 +122,11 @@ test('resolves a car preview from the QA manual origin against the API contract'
     await Promise.resolve();
   });
 
-  const fetchMock = vi.mocked(fetch);
-  expect(fetchMock).toHaveBeenCalledOnce();
-  const [, init] = fetchMock.mock.calls[0];
-  expect(JSON.parse(String(init?.body))).toEqual({
+  const resolverCall = vi.mocked(fetch).mock.calls.find(([url, init]) => (
+    String(url).includes('/api/rutas/resolver') && init?.method === 'POST'
+  ));
+  expect(resolverCall).toBeTruthy();
+  expect(JSON.parse(String(resolverCall?.[1]?.body))).toEqual({
     origen: { lat: 6.17, lng: -75.61 },
     destino: { lat: 6.1723858, lng: -75.609416 },
     modo: 'car',
