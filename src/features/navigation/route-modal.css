@@ -254,7 +254,10 @@
 .route-modal__status-dot--arrived { background: #3c9c53; }
 
 .route-modal__tracking .interactive-map {
-  min-height: min(47vh, 26rem);
+  height: min(47vh, 26rem);
+  min-height: 18rem;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .route-modal__summary {

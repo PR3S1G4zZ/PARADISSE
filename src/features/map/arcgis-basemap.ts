@@ -98,7 +98,7 @@ export async function applyArcgisBasemapStyle({
   token,
   BasemapStyle,
   onFallback,
-}: ApplyArcgisBasemapStyleOptions): Promise<boolean> {
+}: ApplyArcgisBasemapStyleOptions): Promise<StyleSpecification | null> {
   try {
     const basemap = new BasemapStyle({
       style: 'arcgis/navigation',
@@ -116,7 +116,7 @@ export async function applyArcgisBasemapStyle({
     if (providerError || !style) {
       reportBasemapFailure(providerError ?? new Error('ArcGIS style did not load'));
       onFallback('style-error');
-      return false;
+      return null;
     }
 
     // Algunos adaptadores devuelven el estilo sin asignarlo en la instancia;
@@ -124,10 +124,10 @@ export async function applyArcgisBasemapStyle({
     if (!basemap.style) basemap.style = style;
     addArcgisBasemapSourceTokens(style, token);
     basemap.applyTo(map);
-    return true;
+    return style;
   } catch (error) {
     reportBasemapFailure(error);
     onFallback('style-error');
-    return false;
+    return null;
   }
 }

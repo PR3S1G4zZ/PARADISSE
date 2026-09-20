@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiArrowLeft, FiCheckCircle, FiClock, FiMapPin, FiNavigation, FiRefreshCw, FiVolume2, FiX } from 'react-icons/fi';
 import type { CatalogDestination, TravelMode } from '../../shared/types/domain';
+import { mapaApi } from '../../shared/lib/api';
 import { parseManualOrigin } from '../../shared/lib/route-request';
 import { InteractiveMap } from '../map/InteractiveMap';
 import { safeNavigationError, useNavegacion } from './NavigationContext';
@@ -61,6 +62,14 @@ export function RouteModal({ open, destination, onClose }: RouteModalProps) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previousOverflow; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    // DestinationPage unmounts the detail map when this modal opens, then
+    // tracking mounts a fresh InteractiveMap. Warm the shared token cache so
+    // En automóvil does not wait on /api/mapa/token after confirm.
+    void mapaApi.token();
   }, [open]);
 
   if (!open) return null;

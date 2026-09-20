@@ -28,7 +28,7 @@ describe('applyArcgisBasemapStyle', () => {
       onFallback,
     });
 
-    expect(applied).toBe(false);
+    expect(applied).toBeNull();
     expect(applyTo).not.toHaveBeenCalled();
     expect(onFallback).toHaveBeenCalledWith('style-error');
   });
@@ -83,7 +83,7 @@ describe('applyArcgisBasemapStyle', () => {
       onFallback: vi.fn(),
     });
 
-    expect(applied).toBe(true);
+    expect(applied).toBe(style);
     expect(applyTo).toHaveBeenCalledOnce();
   });
 });

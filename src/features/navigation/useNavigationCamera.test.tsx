@@ -46,7 +46,7 @@ beforeEach(() => {
   mapRef = {
     current: {
       easeTo: vi.fn(),
-      getContainer: () => ({ clientHeight: 800 } as HTMLElement),
+      getContainer: () => ({ clientHeight: 800, clientWidth: 400 } as HTMLElement),
     },
   };
 });
@@ -104,6 +104,19 @@ test('recenters once on the last known position while GPS is degraded', () => {
     duration: expect.any(Number),
   }));
   expect(mapRef.current.easeTo).toHaveBeenCalledTimes(1);
+});
+
+test('does not ease the camera while the tracking map has no usable viewport', () => {
+  mapRef = {
+    current: {
+      easeTo: vi.fn(),
+      getContainer: () => ({ clientHeight: 0, clientWidth: 0 } as HTMLElement),
+    },
+  };
+
+  renderCamera();
+
+  expect(mapRef.current.easeTo).not.toHaveBeenCalled();
 });
 
 test('does not re-enable automatic following after a degraded one-shot recenter', () => {

@@ -72,22 +72,52 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+const CACHEABLE_TOKEN_REASONS = new Set(['not-configured']);
+
+let basemapTokenCache: BasemapTokenResult | null = null;
+let basemapTokenInflight: Promise<BasemapTokenResult> | null = null;
+
+const isCacheableBasemapToken = (result: BasemapTokenResult) => (
+  Boolean(result.token) || CACHEABLE_TOKEN_REASONS.has(result.motivo ?? '')
+);
+
+async function fetchBasemapToken(): Promise<BasemapTokenResult> {
+  try {
+    return await getJson<BasemapTokenResult>('/api/mapa/token');
+  } catch (error) {
+    return {
+      token: null,
+      proveedor: 'osm-fallback',
+      motivo: error instanceof Error && error.message === 'fetch-unavailable'
+        ? 'network'
+        : 'backend-unavailable',
+      status: typeof error === 'object' && error !== null && 'status' in error
+        ? Number(error.status)
+        : undefined,
+    };
+  }
+}
+
+export function resetBasemapTokenCache() {
+  basemapTokenCache = null;
+  basemapTokenInflight = null;
+}
+
 export const mapaApi = {
   token: async (): Promise<BasemapTokenResult> => {
-    try {
-      return await getJson<BasemapTokenResult>('/api/mapa/token');
-    } catch (error) {
-      return {
-        token: null,
-        proveedor: 'osm-fallback',
-        motivo: error instanceof Error && error.message === 'fetch-unavailable'
-          ? 'network'
-          : 'backend-unavailable',
-        status: typeof error === 'object' && error !== null && 'status' in error
-          ? Number(error.status)
-          : undefined,
-      };
+    if (basemapTokenCache && isCacheableBasemapToken(basemapTokenCache)) {
+      return basemapTokenCache;
     }
+    if (basemapTokenInflight) return basemapTokenInflight;
+
+    const request = fetchBasemapToken().then((result) => {
+      if (isCacheableBasemapToken(result)) basemapTokenCache = result;
+      return result;
+    }).finally(() => {
+      if (basemapTokenInflight === request) basemapTokenInflight = null;
+    });
+    basemapTokenInflight = request;
+    return request;
   },
   estado: async () => getJson<{ basemap: 'arcgis' | 'osm-fallback'; motivoBasemap: string | null; proveedorRutas: 'arcgis' | 'osrm' }>('/api/mapa/estado'),
 };

@@ -40,6 +40,20 @@ Copiar `.env.example` en `.env` y `backend/.env.example` en `backend/.env` cuand
 - `ARCGIS_REFERER` debe contener el origen HTTPS permitido por ArcGIS cuando la credencial lo requiera.
 - `CORS_ORIGIN` debe ser un origen explícito (por defecto `http://localhost:5173`). `CORS_ORIGIN=*` se rechaza cuando `NODE_ENV=production`. El flujo de cookies del navegador es same-origin (proxy `/api`); CORS se conserva para accesos directos a la API.
 
+### Railway (mapa En automóvil)
+
+Home/Destinos pueden quedarse en OSM. El mapa de navegación del modal (**En automóvil** → confirmar → tracking) usa el mismo `GET /api/mapa/token` y **no** puede obtener ArcGIS por otra vía.
+
+Presiga debe definir la variable en el **servicio `backend`** del proyecto Railway (`paradisse-github` o `paradisse`), entorno **production**:
+
+| Variable | Servicio | Entorno | Uso |
+| --- | --- | --- | --- |
+| `ARCGIS_BASEMAP_API_KEY` | **backend** | production | Token de basemap que `/api/mapa/token` entrega al mapa de tracking. Privilegio de basemaps únicamente. |
+| `ARCGIS_REFERER` | backend | production | Origen HTTPS público de la app si ArcGIS lo exige (ya suele existir). |
+| `CORS_ORIGIN` | backend | production | Origen explícito del frontend. No usar `*`. |
+
+No sirve poner la clave en el servicio `frontend` (Vite no la lee en runtime). `ARCGIS_CLIENT_ID` / `ARCGIS_CLIENT_SECRET` / `ARCGIS_API_KEY` son de routing y **no** se exponen al navegador. El token OAuth de routing **no** se reutiliza como `ARCGIS_BASEMAP_API_KEY`. El mapa pide el basemap con `GET /api/mapa/token` relativo (same-origin; Caddy usa `API_UPSTREAM`). No definir `VITE_API_URL`. Tras guardar `ARCGIS_BASEMAP_API_KEY`, redeploy del backend. Sin esa variable, `/api/mapa/token` responde `{ token: null, proveedor: "osm-fallback", motivo: "not-configured" }`.
+
 `maplibre-gl` está en `^6.4.1` (CVE-2026-85061). `@esri/maplibre-arcgis@1.3.1` declara peer `~5.24.0 || ~6.3.0`; pnpm puede advertir, pero 6.4+ es el parche de la línea 6.3 y no hay release Esri que acepte 6.4.1 todavía.
 
 ## Same-origin en Railway
