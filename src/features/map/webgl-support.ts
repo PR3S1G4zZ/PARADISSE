@@ -31,10 +31,15 @@ export function resetWebGlSupportCache() {
  * Detects WebGL once per page lifetime and immediately releases the probe
  * context so navigation re-renders cannot exhaust the browser's context budget.
  */
+const environmentHasWebGlConstructor = () => (
+  typeof globalThis.WebGLRenderingContext !== 'undefined'
+  || (typeof window !== 'undefined' && typeof window.WebGLRenderingContext !== 'undefined')
+);
+
 export function hasWebGl(): boolean {
   if (cachedSupport !== undefined) return cachedSupport;
   if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-  if (typeof window.WebGLRenderingContext === 'undefined') {
+  if (!environmentHasWebGlConstructor()) {
     cachedSupport = false;
     return cachedSupport;
   }

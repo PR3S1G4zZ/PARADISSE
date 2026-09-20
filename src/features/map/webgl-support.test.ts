@@ -11,23 +11,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const stubWebGlConstructor = (value: unknown) => {
+  vi.stubGlobal('WebGLRenderingContext', value);
+  Object.defineProperty(window, 'WebGLRenderingContext', {
+    configurable: true,
+    writable: true,
+    value,
+  });
+};
+
 describe('hasWebGl', () => {
   test('caches a successful probe and releases the temporary context', () => {
     const loseContext = vi.fn();
     const getExtension = vi.fn((name: string) => (
       name === 'WEBGL_lose_context' ? { loseContext } : null
     ));
-    const getContext = vi.fn(() => ({ getExtension }));
-    const createElement = vi.spyOn(document, 'createElement');
-    const originalCreateElement = document.createElement.bind(document);
-    createElement.mockImplementation((tagName: string, options?: ElementCreationOptions) => {
-      const element = originalCreateElement(tagName, options);
-      if (tagName === 'canvas') {
-        Object.defineProperty(element, 'getContext', { value: getContext });
-      }
-      return element;
-    });
-    vi.stubGlobal('WebGLRenderingContext', function WebGLRenderingContext() {});
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      getExtension,
+    } as unknown as RenderingContext);
+    stubWebGlConstructor(function WebGLRenderingContext() {});
 
     expect(hasWebGl()).toBe(true);
     expect(hasWebGl()).toBe(true);
@@ -38,7 +40,7 @@ describe('hasWebGl', () => {
 
   test('returns false without creating a canvas when WebGL is missing', () => {
     const createElement = vi.spyOn(document, 'createElement');
-    vi.stubGlobal('WebGLRenderingContext', undefined);
+    stubWebGlConstructor(undefined);
 
     expect(hasWebGl()).toBe(false);
     expect(hasWebGl()).toBe(false);
@@ -46,19 +48,10 @@ describe('hasWebGl', () => {
   });
 
   test('does not keep a probe context when getContext throws', () => {
-    const getContext = vi.fn(() => {
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => {
       throw new Error('webgl unavailable');
     });
-    const createElement = vi.spyOn(document, 'createElement');
-    const originalCreateElement = document.createElement.bind(document);
-    createElement.mockImplementation((tagName: string, options?: ElementCreationOptions) => {
-      const element = originalCreateElement(tagName, options);
-      if (tagName === 'canvas') {
-        Object.defineProperty(element, 'getContext', { value: getContext });
-      }
-      return element;
-    });
-    vi.stubGlobal('WebGLRenderingContext', function WebGLRenderingContext() {});
+    stubWebGlConstructor(function WebGLRenderingContext() {});
 
     expect(hasWebGl()).toBe(false);
     expect(hasWebGl()).toBe(false);
