@@ -7,6 +7,8 @@ import { createMapRouter } from './routes/mapa.js';
 import { createRoutingRouter } from './routes/routing-route.js';
 import { routeResolver, validateRouteRequest } from './routes/routing.js';
 
+const RATE_LIMIT_MESSAGE = { error: 'Límite temporal de solicitudes alcanzado.' };
+
 export function createApp({
   basemapApiKey = config.arcgis.basemapApiKey,
   basemapTokenResolver,
@@ -16,6 +18,7 @@ export function createApp({
   routeResolver: resolver = routeResolver,
   corsOrigin = config.corsOrigin,
   logger = console,
+  mapaRateLimit = {},
   } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -32,7 +35,16 @@ export function createApp({
     service: 'paradisse-api',
   }));
 
-  app.use('/api/mapa', createMapRouter({
+  // Token fetches are cheap but still dispense a basemap credential. 30/5min
+  // is enough for remounts while remaining tighter than /api/rutas (60/5min).
+  app.use('/api/mapa', rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 30,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: RATE_LIMIT_MESSAGE,
+    ...mapaRateLimit,
+  }), createMapRouter({
     basemapApiKey,
     basemapTokenResolver,
     oauthConfigured,
@@ -45,7 +57,7 @@ export function createApp({
     limit: 60,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'Límite temporal de solicitudes alcanzado.' },
+    message: RATE_LIMIT_MESSAGE,
   }), createRoutingRouter({ resolver: validatedResolver }));
 
   app.use((error, request, response, _next) => {
