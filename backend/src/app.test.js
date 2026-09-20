@@ -60,6 +60,43 @@ test('does not expose the private OAuth access token as a basemap credential', a
   expect(JSON.stringify(response.body)).not.toContain('oauth');
 });
 
+test('rate-limits /api/mapa token fetches without leaking private keys', async () => {
+  const app = createApp({
+    basemapApiKey: 'public-basemap-key',
+    routingApiKey: 'private-routing-key',
+    mapaRateLimit: { windowMs: 60_000, limit: 2 },
+  });
+
+  const first = await request(app).get('/api/mapa/token');
+  const second = await request(app).get('/api/mapa/token');
+  const third = await request(app).get('/api/mapa/token');
+
+  expect(first.status).toBe(200);
+  expect(second.status).toBe(200);
+  expect(first.body).toEqual({
+    token: 'public-basemap-key',
+    proveedor: 'arcgis',
+    motivo: null,
+  });
+  expect(third.status).toBe(429);
+  expect(third.body).toEqual({ error: 'Límite temporal de solicitudes alcanzado.' });
+  expect(JSON.stringify(third.body)).not.toContain('private-routing-key');
+  expect(JSON.stringify(third.body)).not.toMatch(/ARCGIS_CLIENT_SECRET|ARCGIS_API_KEY|oauth/i);
+});
+
+test('rate-limits /api/mapa/estado with the same mapa limiter', async () => {
+  const app = createApp({
+    basemapApiKey: 'public-basemap-key',
+    mapaRateLimit: { windowMs: 60_000, limit: 1 },
+  });
+
+  const allowed = await request(app).get('/api/mapa/estado');
+  const blocked = await request(app).get('/api/mapa/token');
+
+  expect(allowed.status).toBe(200);
+  expect(blocked.status).toBe(429);
+});
+
 test('reports OSM fallback when the public basemap credential is absent', async () => {
   const app = createApp({ basemapApiKey: '' });
 

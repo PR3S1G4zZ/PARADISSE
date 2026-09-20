@@ -4,6 +4,19 @@ import { mapaApi, rutasApi } from './api';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('map and routing API adapters', () => {
+  test('falls back to OSM when the token endpoint is rate-limited', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'Límite temporal de solicitudes alcanzado.',
+    }), { status: 429, headers: { 'Content-Type': 'application/json' } })));
+
+    await expect(mapaApi.token()).resolves.toMatchObject({
+      token: null,
+      proveedor: 'osm-fallback',
+      motivo: 'backend-unavailable',
+      status: 429,
+    });
+  });
+
   test('reads the safe basemap token contract', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       token: 'public-key', proveedor: 'arcgis', motivo: null,

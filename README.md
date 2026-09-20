@@ -24,6 +24,9 @@ Copiar `.env.example` en `.env` y `backend/.env.example` en `backend/.env` cuand
 - `ARCGIS_BASEMAP_API_KEY` es una credencial pública limitada al privilegio de basemaps y puede llegar al navegador mediante `/api/mapa/token`.
 - Si no existe una credencial pública de basemap, el mapa usa OSM. El token OAuth privado nunca se reutiliza como token del navegador.
 - `ARCGIS_REFERER` debe contener el origen HTTPS permitido por ArcGIS cuando la credencial lo requiera.
+- `CORS_ORIGIN` debe ser un origen explícito (por defecto `http://localhost:5173`). `CORS_ORIGIN=*` se rechaza cuando `NODE_ENV=production`.
+
+`maplibre-gl` está en `^6.4.1` (CVE-2026-85061). `@esri/maplibre-arcgis@1.3.1` declara peer `~5.24.0 || ~6.3.0`; pnpm puede advertir, pero 6.4+ es el parche de la línea 6.3 y no hay release Esri que acepte 6.4.1 todavía.
 
 ## Comprobaciones
 
@@ -34,5 +37,7 @@ pnpm build
 ```
 
 El backend expone `GET /health`, `GET /api/mapa/token`, `GET /api/mapa/estado` y `POST /api/rutas/resolver`.
+
+`/api/mapa` se limita a 30 solicitudes / 5 minutos por IP (el token de basemap se cachea 5 minutos). `/api/rutas` se limita a 60 / 5 minutos. El endpoint de token solo devuelve `ARCGIS_BASEMAP_API_KEY`; no expone `ARCGIS_CLIENT_SECRET`, `ARCGIS_API_KEY` ni tokens OAuth.
 
 La navegación GPS, brújula, voz y Wake Lock necesitan una prueba final en un dispositivo móvil con HTTPS. El mapa visual funciona sin credenciales ArcGIS mediante OSM y las rutas informan cuando usan OSRM como fallback.
