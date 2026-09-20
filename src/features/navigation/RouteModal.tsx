@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { FiArrowLeft, FiCheckCircle, FiClock, FiMapPin, FiNavigation, FiRefreshCw, FiVolume2, FiX } from 'react-icons/fi';
 import type { CatalogDestination, TravelMode } from '../../shared/types/domain';
+import { parseManualOrigin } from '../../shared/lib/route-request';
 import { InteractiveMap } from '../map/InteractiveMap';
-import { useNavegacion } from './NavigationContext';
+import { safeNavigationError, useNavegacion } from './NavigationContext';
 import './route-modal.css';
 
 type RouteStep = 'transport' | 'confirm' | 'tracking';
@@ -79,19 +80,18 @@ export function RouteModal({ open, destination, onClose }: RouteModalProps) {
     setLocalError(null);
     let manualOrigin;
     if (manualOriginOpen) {
-      const lat = Number(manualLat);
-      const lng = Number(manualLng);
-      if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
-        setLocalError('Escribe una latitud y longitud válidas para la vista previa.');
+      const parsed = parseManualOrigin(manualLat, manualLng);
+      if (!parsed.ok) {
+        setLocalError(parsed.error);
         return;
       }
-      manualOrigin = { lat, lng };
+      manualOrigin = parsed.origin;
     }
     try {
       await navigation.startRoute(destination, selectedMode, manualOrigin);
       setStep('tracking');
-    } catch {
-      setLocalError(navigation.error ?? 'No se pudo calcular la ruta.');
+    } catch (error) {
+      setLocalError(safeNavigationError(error));
     }
   };
 
@@ -148,8 +148,8 @@ export function RouteModal({ open, destination, onClose }: RouteModalProps) {
               </button>
             ) : (
               <div className="route-modal__manual-origin">
-                <label>Latitud<input inputMode="decimal" value={manualLat} onChange={(event) => setManualLat(event.target.value)} placeholder="6.170000" /></label>
-                <label>Longitud<input inputMode="decimal" value={manualLng} onChange={(event) => setManualLng(event.target.value)} placeholder="-75.610000" /></label>
+                <label>Latitud<input data-manual-origin="lat" inputMode="decimal" value={manualLat} onChange={(event) => setManualLat(event.target.value)} placeholder="6.170000" /></label>
+                <label>Longitud<input data-manual-origin="lng" inputMode="decimal" value={manualLng} onChange={(event) => setManualLng(event.target.value)} placeholder="-75.610000" /></label>
                 <small>La vista previa manual no activa seguimiento GPS ni recálculo.</small>
               </div>
             )}

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import type { CatalogDestination, GeoPoint, TravelMode } from '../../shared/types/domain';
 import { rutasApi, type ResolvedRoute } from '../../shared/lib/api';
+import { routingPointFor, toRoutePoint } from '../../shared/lib/route-request';
 import { createNavigationPoseEstimator, type NavigationPose, type NavigationPosition } from './navigation-pose';
 import { createRouteMatcher, prepareRoute, type RouteMatch } from './route-matching';
 import { isTrustedPosition, isUsablePosition, useGeolocation } from './useGeolocation';
@@ -65,7 +66,7 @@ export function useNavegacion(): NavigationContextValue {
   return context;
 }
 
-const safeNavigationError = (error: unknown) => {
+export const safeNavigationError = (error: unknown) => {
   if (!(error instanceof Error)) return 'No se pudo preparar la navegación.';
   const status = typeof error === 'object' && error !== null && 'status' in error
     ? Number((error as Error & { status?: number }).status)
@@ -131,8 +132,8 @@ export function NavegacionProvider({ children }: PropsWithChildren) {
     setError(null);
     try {
       const resolvedRoute = await rutasApi.resolver(
-        { lat: origin.lat, lng: origin.lng },
-        target.location.routingPoint ?? target.location,
+        toRoutePoint(origin),
+        routingPointFor(target),
         mode,
         target.name,
       );
@@ -191,8 +192,8 @@ export function NavegacionProvider({ children }: PropsWithChildren) {
         setRouteStartPosition(origin);
       }
       const resolvedRoute = await rutasApi.resolver(
-        { lat: origin.lat, lng: origin.lng },
-        nextDestination.location.routingPoint ?? nextDestination.location,
+        toRoutePoint(origin),
+        routingPointFor(nextDestination),
         nextMode,
         nextDestination.name,
       );

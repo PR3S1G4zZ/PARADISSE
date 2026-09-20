@@ -102,6 +102,41 @@ test('supports a manual origin as an explicitly non-live preview', async () => {
   act(() => root.unmount());
 });
 
+test('posts a car route from a manual origin using only lat/lng destination points', async () => {
+  const parque = getDestination('parque-principal-itagui')!;
+  function CarHarness() {
+    const navigation = useNavegacion();
+    return (
+      <button
+        type="button"
+        data-car-preview
+        onClick={() => void navigation.startRoute(parque, 'car', { lat: 6.17, lng: -75.61 })}
+      >
+        Auto
+      </button>
+    );
+  }
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => {
+    root.render(<MemoryRouter><NavegacionProvider><CarHarness /></NavegacionProvider></MemoryRouter>);
+  });
+
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('[data-car-preview]')!.click();
+  });
+
+  const [, init] = vi.mocked(fetch).mock.calls[0];
+  expect(JSON.parse(String(init?.body))).toEqual({
+    origen: { lat: 6.17, lng: -75.61 },
+    destino: { lat: 6.1723858, lng: -75.609416 },
+    modo: 'car',
+    nombreDestino: 'Parque Principal de Itagüí',
+  });
+  act(() => root.unmount());
+});
+
 test('starts a route from a fresh moderate-accuracy fix in degraded GPS mode', async () => {
   Object.defineProperty(navigator, 'geolocation', {
     configurable: true,
