@@ -26,6 +26,8 @@ Copiar `.env.example` en `.env` y `backend/.env.example` en `backend/.env` cuand
 - `ARCGIS_REFERER` debe contener el origen HTTPS permitido por ArcGIS cuando la credencial lo requiera.
 - `CORS_ORIGIN` debe ser un origen explícito (por defecto `http://localhost:5173`). `CORS_ORIGIN=*` se rechaza cuando `NODE_ENV=production`.
 
+`maplibre-gl` está en `^6.4.1` (CVE-2026-85061). `@esri/maplibre-arcgis@1.3.1` declara peer `~5.24.0 || ~6.3.0`; pnpm puede advertir, pero 6.4+ es el parche de la línea 6.3 y no hay release Esri que acepte 6.4.1 todavía.
+
 ## Comprobaciones
 
 ```powershell
