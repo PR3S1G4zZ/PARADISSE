@@ -21,10 +21,10 @@ import { applyArcgisBasemapStyle } from './arcgis-basemap';
 import { boundsFor, centerFor, routeGeoJson, toMapLibrePoint } from './map-geometry';
 import type { InteractiveMapMode, InteractiveMapProps } from './map-types';
 import {
-  canApplyNavigationCamera,
   enableMapInteractions,
   observeNavigationMapSize,
   shouldIgnoreMapError,
+  waitForNavigationStyleReady,
 } from './navigation-map-runtime';
 import { attachMapWebGlLifecycle, hasWebGl } from './webgl-support';
 import './interactive-map.css';
@@ -231,7 +231,7 @@ export function InteractiveMapView({
       setProviderReason(null);
       enableMapInteractions(map);
       map.resize();
-      setStyleReady(canApplyNavigationCamera(map) || mode !== 'navigation');
+      if (mode !== 'navigation') setStyleReady(true);
     } catch {
       basemapAttemptRef.current = null;
       useOsmFallback('style-error');
@@ -279,8 +279,16 @@ export function InteractiveMapView({
   useEffect(() => {
     if (mode !== 'navigation' || !mapReady || !mapRef.current) return undefined;
     const map = mapRef.current.getMap();
-    enableMapInteractions(map);
-    return observeNavigationMapSize(map);
+    const stopSize = observeNavigationMapSize(map);
+    const stopStyle = waitForNavigationStyleReady(map, () => {
+      enableMapInteractions(map);
+      map.resize();
+      setStyleReady(true);
+    });
+    return () => {
+      stopSize();
+      stopStyle();
+    };
   }, [mapReady, mapStyle, mode]);
 
   const mapMarkers = destinations.map((destination) => (

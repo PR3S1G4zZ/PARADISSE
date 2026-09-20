@@ -6,6 +6,7 @@ import {
   observeNavigationMapSize,
   resizeNavigationMap,
   shouldIgnoreMapError,
+  waitForNavigationStyleReady,
 } from './navigation-map-runtime';
 
 describe('navigation map runtime', () => {
@@ -70,6 +71,32 @@ describe('navigation map runtime', () => {
     expect(map.resize).toHaveBeenCalled();
     stop();
     expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('does not mark the camera ready until the ArcGIS style finishes loading', () => {
+    const listeners = new Map<string, () => void>();
+    const onReady = vi.fn();
+    let loaded = false;
+    const map = {
+      isStyleLoaded: () => loaded,
+      resize: vi.fn(),
+      getContainer: () => ({ clientHeight: 320, clientWidth: 480 }),
+      on: vi.fn((type: string, listener: () => void) => { listeners.set(type, listener); }),
+      off: vi.fn(),
+    };
+
+    const stop = waitForNavigationStyleReady(map, onReady);
+    expect(onReady).not.toHaveBeenCalled();
+
+    listeners.get('idle')?.();
+    expect(onReady).not.toHaveBeenCalled();
+
+    loaded = true;
+    listeners.get('style.load')?.();
+    expect(onReady).toHaveBeenCalledOnce();
+
+    stop();
+    expect(map.off).toHaveBeenCalledWith('style.load', expect.any(Function));
   });
 
   test('does not drop a loaded ArcGIS style on a transient tile error', () => {

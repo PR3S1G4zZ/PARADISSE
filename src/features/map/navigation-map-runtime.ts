@@ -14,7 +14,12 @@ export type NavigationMapLike = {
   resize?: () => void;
   isStyleLoaded?: () => boolean | void;
   getContainer?: () => { clientHeight?: number; clientWidth?: number };
+  on?: (type: string, listener: () => void) => void;
+  off?: (type: string, listener: () => void) => void;
+  once?: (type: string, listener: () => void) => void;
 } & Partial<Record<HandlerName, MapHandler>>;
+
+const STYLE_READY_FALLBACK_MS = 2000;
 
 const INTERACTION_HANDLERS: HandlerName[] = [
   'scrollZoom',
@@ -47,6 +52,59 @@ export function canApplyNavigationCamera(map: NavigationMapLike | null | undefin
   if (!map || !mapHasUsableViewport(map)) return false;
   if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded() === false) return false;
   return true;
+}
+
+export function isMapStyleLoaded(map: NavigationMapLike | null | undefined): boolean {
+  return !(map && typeof map.isStyleLoaded === 'function' && map.isStyleLoaded() === false);
+}
+
+/**
+ * applyTo()/setMapStyle() load ArcGIS asynchronously. Follow/camera must wait
+ * for style.load/idle instead of a one-shot isStyleLoaded() check that is
+ * almost always false right after the style swap.
+ */
+export function waitForNavigationStyleReady(
+  map: NavigationMapLike | null | undefined,
+  onReady: () => void,
+): () => void {
+  let cancelled = false;
+  let settled = false;
+
+  const settle = () => {
+    if (cancelled || settled) return;
+    settled = true;
+    onReady();
+  };
+
+  const trySettle = () => {
+    if (!isMapStyleLoaded(map)) return;
+    enableMapInteractions(map);
+    resizeNavigationMap(map);
+    settle();
+  };
+
+  if (!map) {
+    settle();
+    return () => { cancelled = true; };
+  }
+
+  trySettle();
+  if (settled) {
+    return () => { cancelled = true; };
+  }
+
+  map.on?.('idle', trySettle);
+  map.on?.('style.load', trySettle);
+  const timeout = typeof window !== 'undefined'
+    ? window.setTimeout(settle, STYLE_READY_FALLBACK_MS)
+    : undefined;
+
+  return () => {
+    cancelled = true;
+    map.off?.('idle', trySettle);
+    map.off?.('style.load', trySettle);
+    if (timeout !== undefined) window.clearTimeout(timeout);
+  };
 }
 
 export function resizeNavigationMap(map: NavigationMapLike | null | undefined): boolean {
