@@ -3,7 +3,7 @@
 # stay SameSite=Lax on the public frontend host.
 #
 # Required on this service:
-#   API_UPSTREAM=http://${{<backend-service>.RAILWAY_PRIVATE_DOMAIN}}:${{<backend-service>.PORT}}
+#   Railway service reference API_UPSTREAM to backend private domain and PORT.
 # Do not set VITE_API_URL in production (browser must call relative /api).
 
 [build]
