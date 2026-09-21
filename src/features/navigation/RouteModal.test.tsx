@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getDestination } from '../destinations/destination-service';
+import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { NavegacionProvider } from './NavigationContext';
 import { RouteModal } from './RouteModal';
 
@@ -132,8 +133,13 @@ test('resolves a car preview from the QA manual origin against the API contract'
     modo: 'car',
     nombreDestino: 'Parque Principal de Itagüí',
   });
+  await act(async () => {
+    await flushLazyInteractiveMap();
+  });
+
   expect(container.textContent).toMatch(/vista previa: el origen fue elegido manualmente/i);
   expect(container.textContent).toMatch(/ruta resuelta por arcgis/i);
+  expect(container.querySelector('[data-map-mode="navigation"]')).toBeTruthy();
   act(() => root.unmount());
 });
 

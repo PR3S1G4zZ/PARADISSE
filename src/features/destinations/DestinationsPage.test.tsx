@@ -1,11 +1,12 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { DestinationsPage } from './DestinationsPage';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderDestinations() {
+async function renderDestinations() {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -18,6 +19,10 @@ function renderDestinations() {
     );
   });
 
+  await act(async () => {
+    await flushLazyInteractiveMap();
+  });
+
   return { container, root };
 }
 
@@ -26,8 +31,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-test('renders the catalogue of municipalities, Itagui sites, and embedded map', () => {
-  const { container, root } = renderDestinations();
+test('renders the catalogue of municipalities, Itagui sites, and embedded map', async () => {
+  const { container, root } = await renderDestinations();
 
   expect(container.querySelector('.destinations-hero__backdrop')?.getAttribute('src'))
     .toBe('/assets/destinations-hero.webp');
@@ -44,8 +49,8 @@ test('renders the catalogue of municipalities, Itagui sites, and embedded map', 
   act(() => root.unmount());
 });
 
-test('filters destinations without losing accent-insensitive matching', () => {
-  const { container, root } = renderDestinations();
+test('filters destinations without losing accent-insensitive matching', async () => {
+  const { container, root } = await renderDestinations();
   const input = container.querySelector<HTMLInputElement>('input[type="search"]');
   expect(input).toBeTruthy();
 
@@ -66,8 +71,8 @@ test('filters destinations without losing accent-insensitive matching', () => {
   act(() => root.unmount());
 });
 
-test('filters the catalogue to Itagui sites', () => {
-  const { container, root } = renderDestinations();
+test('filters the catalogue to Itagui sites', async () => {
+  const { container, root } = await renderDestinations();
   const filter = container.querySelector<HTMLButtonElement>('[data-destination-filter="site"]');
   expect(filter).toBeTruthy();
 
@@ -81,8 +86,8 @@ test('filters the catalogue to Itagui sites', () => {
   act(() => root.unmount());
 });
 
-test('persists a catalogue favorite through the existing visit-plan service', () => {
-  const { container, root } = renderDestinations();
+test('persists a catalogue favorite through the existing visit-plan service', async () => {
+  const { container, root } = await renderDestinations();
   const favorite = container.querySelector<HTMLButtonElement>(
     'button[aria-label="Agregar Jardín de favoritos"]',
   );

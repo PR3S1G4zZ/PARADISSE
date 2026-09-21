@@ -1,11 +1,12 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { DestinationPage } from './DestinationPage';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderDestination(slug = 'jardin') {
+async function renderDestination(slug = 'jardin') {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -21,6 +22,10 @@ function renderDestination(slug = 'jardin') {
     );
   });
 
+  await act(async () => {
+    await flushLazyInteractiveMap();
+  });
+
   return { container, root };
 }
 
@@ -29,8 +34,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-test('renders the detailed destination hierarchy from the Figma screen', () => {
-  const { container, root } = renderDestination();
+test('renders the detailed destination hierarchy from the Figma screen', async () => {
+  const { container, root } = await renderDestination();
 
   expect(container.querySelector('.destination-detail-page')).toBeTruthy();
   expect(container.querySelector('.destination-detail__hero')).toBeTruthy();
@@ -47,8 +52,8 @@ test('renders the detailed destination hierarchy from the Figma screen', () => {
   act(() => root.unmount());
 });
 
-test('renders the requested Itagui site through the shared destination detail route', () => {
-  const { container, root } = renderDestination('sena-calatrava');
+test('renders the requested Itagui site through the shared destination detail route', async () => {
+  const { container, root } = await renderDestination('sena-calatrava');
 
   expect(container.querySelector('.destination-detail__hero h1')?.textContent)
     .toBe('SENA de Calatrava');
@@ -59,8 +64,8 @@ test('renders the requested Itagui site through the shared destination detail ro
   act(() => root.unmount());
 });
 
-test('keeps the detail navigation and planning actions discoverable', () => {
-  const { container, root } = renderDestination();
+test('keeps the detail navigation and planning actions discoverable', async () => {
+  const { container, root } = await renderDestination();
 
   const backLink = container.querySelector<HTMLAnchorElement>('.destination-detail__back');
   expect(backLink?.getAttribute('href')).toBe('/destinos');

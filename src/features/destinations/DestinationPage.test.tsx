@@ -1,12 +1,13 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { NavegacionProvider } from '../navigation/NavigationContext';
 import { DestinationPage } from './DestinationPage';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderDestination(slug = 'jardin') {
+async function renderDestination(slug = 'jardin') {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -24,6 +25,10 @@ function renderDestination(slug = 'jardin') {
         </NavegacionProvider>
       </MemoryRouter>,
     );
+  });
+
+  await act(async () => {
+    await flushLazyInteractiveMap();
   });
 
   return { container, root };
@@ -48,8 +53,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-test('persists the municipality before continuing to checkout', () => {
-  const { container, root } = renderDestination();
+test('persists the municipality before continuing to checkout', async () => {
+  const { container, root } = await renderDestination();
 
   act(() => {
     buttonNamed(container, /planear esta visita/i).click();
@@ -61,8 +66,8 @@ test('persists the municipality before continuing to checkout', () => {
   act(() => root.unmount());
 });
 
-test('adds a destination experience and shows that it is already in the plan', () => {
-  const { container, root } = renderDestination();
+test('adds a destination experience and shows that it is already in the plan', async () => {
+  const { container, root } = await renderDestination();
   const card = Array.from(container.querySelectorAll<HTMLElement>('.experience-card'))
     .find((candidate) => /ruta de café de origen/i.test(candidate.textContent ?? ''));
 
@@ -79,8 +84,8 @@ test('adds a destination experience and shows that it is already in the plan', (
   act(() => root.unmount());
 });
 
-test('publishes only guide categories that have data for the destination', () => {
-  const { container, root } = renderDestination();
+test('publishes only guide categories that have data for the destination', async () => {
+  const { container, root } = await renderDestination();
   const guideHrefs = Array.from(container.querySelectorAll<HTMLAnchorElement>('.guide-links a'))
     .map((link) => link.getAttribute('href'));
 
@@ -89,16 +94,16 @@ test('publishes only guide categories that have data for the destination', () =>
   act(() => root.unmount());
 });
 
-test('does not expose empty guide routes for a destination without guides', () => {
-  const { container, root } = renderDestination('jerico');
+test('does not expose empty guide routes for a destination without guides', async () => {
+  const { container, root } = await renderDestination('jerico');
 
   expect(container.querySelectorAll('.guide-links a')).toHaveLength(0);
   expect(container.textContent).toMatch(/todavía no hay guías publicadas para jericó/i);
   act(() => root.unmount());
 });
 
-test('returns from a valid destination detail to the destinations catalogue', () => {
-  const { container, root } = renderDestination();
+test('returns from a valid destination detail to the destinations catalogue', async () => {
+  const { container, root } = await renderDestination();
 
   try {
     const backLink = linkNamed(container, /volver a destinos/i);
@@ -114,8 +119,8 @@ test('returns from a valid destination detail to the destinations catalogue', ()
   }
 });
 
-test('presents the destination identity, location, description, and planning action', () => {
-  const { container, root } = renderDestination();
+test('presents the destination identity, location, description, and planning action', async () => {
+  const { container, root } = await renderDestination();
 
   try {
     const content = container.querySelector<HTMLElement>('.destination-detail__content');
@@ -130,8 +135,8 @@ test('presents the destination identity, location, description, and planning act
   }
 });
 
-test('groups destination experiences and guide links into named sections', () => {
-  const { container, root } = renderDestination();
+test('groups destination experiences and guide links into named sections', async () => {
+  const { container, root } = await renderDestination();
 
   try {
     const experiences = container.querySelector<HTMLElement>(
@@ -158,8 +163,8 @@ test('groups destination experiences and guide links into named sections', () =>
   }
 });
 
-test('opens the route modal from a destination detail', () => {
-  const { container, root } = renderDestination('sena-calatrava');
+test('opens the route modal from a destination detail', async () => {
+  const { container, root } = await renderDestination('sena-calatrava');
 
   act(() => {
     buttonNamed(container, /cómo llegar/i).click();
@@ -170,8 +175,8 @@ test('opens the route modal from a destination detail', () => {
   act(() => root.unmount());
 });
 
-test('releases the detail map before opening live navigation', () => {
-  const { container, root } = renderDestination('sena-calatrava');
+test('releases the detail map before opening live navigation', async () => {
+  const { container, root } = await renderDestination('sena-calatrava');
 
   expect(container.querySelector('[data-map-mode="detail"]')).toBeTruthy();
   act(() => {
