@@ -35,7 +35,7 @@ test('register creates an authenticated session through the API', async () => {
   expect(session.email).toBe('ana@example.com');
   expect(fetchMock).toHaveBeenCalledOnce();
   const [url, init] = fetchMock.mock.calls[0];
-  expect(String(url)).toMatch(/\/api\/auth\/register$/);
+  expect(String(url)).toBe('/api/auth/register');
   expect(init.credentials).toBe('include');
   expect(JSON.parse(init.body)).toEqual({
     name: 'Ana',

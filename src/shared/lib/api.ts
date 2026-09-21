@@ -1,8 +1,16 @@
 import type { GeoPoint, TravelMode, UserSession } from '../types/domain';
 import { routeRequestBody } from './route-request';
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ?? (import.meta.env.PROD ? '' : 'http://localhost:3001');
+/**
+ * Same-origin by default so SameSite=Lax session cookies work.
+ * Leave VITE_API_URL unset/empty in production and local (Vite/Caddy proxy /api).
+ */
+export function resolveApiBase(raw: unknown = import.meta.env.VITE_API_URL): string {
+  if (typeof raw !== 'string') return '';
+  return raw.trim().replace(/\/+$/, '');
+}
+
+const API_BASE = resolveApiBase();
 
 export interface BasemapTokenResult {
   token: string | null;

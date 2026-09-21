@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { authApi, mapaApi, rutasApi } from './api';
+import { authApi, mapaApi, resolveApiBase, rutasApi } from './api';
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe('same-origin API base', () => {
+  test('uses a relative base unless VITE_API_URL is a non-empty override', () => {
+    expect(resolveApiBase(undefined)).toBe('');
+    expect(resolveApiBase('')).toBe('');
+    expect(resolveApiBase('   ')).toBe('');
+    expect(resolveApiBase('https://api.example.com/')).toBe('https://api.example.com');
+  });
+});
 
 describe('map and routing API adapters', () => {
   test('falls back to OSM when the token endpoint is rate-limited', async () => {
@@ -41,7 +50,8 @@ describe('map and routing API adapters', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    const [, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/rutas/resolver');
     expect(init.method).toBe('POST');
     expect(init.credentials).toBe('include');
     expect(JSON.parse(init.body)).toEqual({
@@ -88,6 +98,7 @@ describe('map and routing API adapters', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(authApi.me()).resolves.toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/me');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
 

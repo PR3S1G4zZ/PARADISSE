@@ -35,6 +35,8 @@ export function createApp({
   // real client IP without trusting arbitrary proxy chains.
   app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: false }));
+  // Browser auth is same-origin via the frontend /api proxy (Vite locally,
+  // Caddy on Railway). CORS remains for any direct hits to this service.
   app.use(cors({
     origin: corsOrigin,
     credentials: corsOrigin !== '*',

@@ -1,0 +1,10 @@
+# Frontend service (repo root). Railpack builds the Vite SPA and serves it
+# with ./Caddyfile. /api is reverse-proxied to API_UPSTREAM so auth cookies
+# stay SameSite=Lax on the public frontend host.
+#
+# Required on this service:
+#   API_UPSTREAM=http://${{<backend-service>.RAILWAY_PRIVATE_DOMAIN}}:${{<backend-service>.PORT}}
+# Do not set VITE_API_URL in production (browser must call relative /api).
+
+[build]
+builder = "RAILPACK"

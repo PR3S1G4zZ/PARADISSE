@@ -1,0 +1,50 @@
+# Frontend service (Railpack + Caddy). Browser calls stay same-origin:
+#   /api/*  → backend via API_UPSTREAM
+#   /*      → Vite build (SPA fallback)
+#
+# On the Railway frontend service set:
+#   API_UPSTREAM=http://${{<backend-service>.RAILWAY_PRIVATE_DOMAIN}}:${{<backend-service>.PORT}}
+# Leave VITE_API_URL unset so the built JS uses relative /api paths.
+#
+# {{.DIST_DIR}} / IndexFallback are filled by Railpack (Vite → dist).
+
+{
+	admin off
+	persist_config off
+	auto_https off
+	log {
+		format json
+	}
+	servers {
+		trusted_proxies static private_ranges 100.0.0.0/8
+	}
+}
+
+:{$PORT:80} {
+	log {
+		format json
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	handle /health {
+		respond 200
+	}
+
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM}
+	}
+
+	handle {
+		root * {{.DIST_DIR}}
+		encode gzip
+		file_server {
+			hide .git
+			hide .env*
+		}
+		try_files {path} {path}.html {path}/index.html{{if .IndexFallback}} /index.html{{end}}
+	}
+}
