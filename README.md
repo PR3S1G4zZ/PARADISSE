@@ -31,7 +31,7 @@ Copiar `.env.example` en `.env` y `backend/.env.example` en `backend/.env` cuand
 - `DATABASE_URL` es obligatorio para `/api/auth/*`. Health, mapa y rutas siguen funcionando sin ella.
 - Cookie de sesión `paradisse_session`: HttpOnly, SameSite=Lax, Secure cuando `NODE_ENV=production`. El frontend llama a `/api/auth/*` **relativo** (`credentials: include`). Solo se guarda el hash SHA-256 del token opaco. No usar `SameSite=None`.
 - **No definir `VITE_API_URL` en producción** (ni dejarla con la URL absoluta del backend). El build usa `''` y el navegador pega al mismo host. En local, dejarla vacía también: Vite hace de proxy.
-- En el servicio frontend de Railway, definir `API_UPSTREAM` hacia el backend (red privada preferida), por ejemplo `API_UPSTREAM=http://${{<servicio-backend>.RAILWAY_PRIVATE_DOMAIN}}:${{<servicio-backend>.PORT}}`. El `Caddyfile` de la raíz proxifica `/api/*` a ese upstream.
+- En el servicio frontend de Railway, definir `API_UPSTREAM` hacia el backend (red privada preferida): referencia de servicio Railway al dominio privado del backend y a su `PORT`. El `Caddyfile` de la raíz proxifica `/api/*` a ese upstream.
 - Las cuentas locales (`paradisse.session` / `paradisse.local-users`) se eliminan al cargar la app. El plan y el checkout local no se tocan.
 - `ARCGIS_CLIENT_ID` y `ARCGIS_CLIENT_SECRET` permanecen únicamente en el backend y se usan para routing.
 - `ARCGIS_API_KEY` también es privada y se usa únicamente en el backend para routing.
