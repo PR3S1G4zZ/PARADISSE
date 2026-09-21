@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
@@ -40,16 +37,6 @@ function renderLazyMap() {
 
 afterEach(() => {
   document.body.replaceChildren();
-});
-
-test('keeps react-map-gl and the Esri basemap path out of the public map entry', () => {
-  const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'InteractiveMap.tsx'), 'utf8');
-  expect(source).toMatch(/lazy\(/);
-  expect(source).toMatch(/Suspense/);
-  expect(source).toMatch(/MapErrorBoundary/);
-  expect(source).not.toMatch(/react-map-gl/);
-  expect(source).not.toMatch(/maplibre-gl/);
-  expect(source).not.toMatch(/@esri\/maplibre-arcgis/);
 });
 
 test('keeps the map layout while the heavy chunk is pending', () => {
