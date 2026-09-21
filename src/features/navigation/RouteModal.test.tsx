@@ -2,6 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { mapaApi, resetBasemapTokenCache } from '../../shared/lib/api';
 import { getDestination } from '../destinations/destination-service';
 import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { NavegacionProvider } from './NavigationContext';
@@ -67,6 +68,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetBasemapTokenCache();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
@@ -79,6 +82,19 @@ test('starts with transport selection for the selected destination', () => {
   expect(container.querySelector('[data-route-mode="walk"]')).toBeTruthy();
   expect(container.querySelector('[data-route-mode="car"]')).toBeTruthy();
 
+  act(() => root.unmount());
+});
+
+test('prefetches the basemap token when the route modal opens', () => {
+  const token = vi.spyOn(mapaApi, 'token').mockResolvedValue({
+    token: 'public-key',
+    proveedor: 'arcgis',
+    motivo: null,
+  });
+
+  const { root } = renderModal();
+
+  expect(token).toHaveBeenCalled();
   act(() => root.unmount());
 });
 
@@ -103,7 +119,10 @@ test('does not send Null Island when the manual origin placeholders are left emp
     await Promise.resolve();
   });
 
-  expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  const resolverCalls = vi.mocked(fetch).mock.calls.filter(([url, init]) => (
+    String(url).includes('/api/rutas/resolver') && (init as RequestInit | undefined)?.method === 'POST'
+  ));
+  expect(resolverCalls).toHaveLength(0);
   expect(container.textContent).toMatch(/escribe una latitud y longitud válidas/i);
   expect(container.textContent).not.toMatch(/vista previa: el origen fue elegido manualmente/i);
   act(() => root.unmount());

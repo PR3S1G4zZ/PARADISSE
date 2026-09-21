@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { authApi, mapaApi, resolveApiBase, rutasApi } from './api';
+import { authApi, mapaApi, resetBasemapTokenCache, resolveApiBase, rutasApi } from './api';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  resetBasemapTokenCache();
+  vi.unstubAllGlobals();
+});
 
 describe('same-origin API base', () => {
   test('uses a relative base unless VITE_API_URL is a non-empty override', () => {
@@ -32,6 +35,35 @@ describe('map and routing API adapters', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
 
     await expect(mapaApi.token()).resolves.toMatchObject({ token: 'public-key', proveedor: 'arcgis' });
+    const fetchMock = vi.mocked(fetch);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/mapa/token');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
+  });
+
+  test('reuses a successful basemap token across remounts without a second fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      token: 'public-key', proveedor: 'arcgis', motivo: null,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(mapaApi.token()).resolves.toMatchObject({ token: 'public-key' });
+    await expect(mapaApi.token()).resolves.toMatchObject({ token: 'public-key' });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  test('does not cache a 429 so the car map can retry after the rate-limit window', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        error: 'Límite temporal de solicitudes alcanzado.',
+      }), { status: 429, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        token: 'public-key', proveedor: 'arcgis', motivo: null,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(mapaApi.token()).resolves.toMatchObject({ token: null, status: 429 });
+    await expect(mapaApi.token()).resolves.toMatchObject({ token: 'public-key' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('posts normalized route input without exposing client-side routing credentials', async () => {

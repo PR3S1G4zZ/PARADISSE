@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TravelMode } from '../../shared/types/domain';
+import { canApplyNavigationCamera, type NavigationMapLike } from '../map/navigation-map-runtime';
 import { CAMERA_MODES, type CameraMode, type NavigationFrame } from './navigation-frame';
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -172,9 +173,8 @@ export function buildCameraTarget(
   };
 }
 
-interface MapLike {
+interface MapLike extends NavigationMapLike {
   easeTo: (options: Record<string, unknown>) => void;
-  getContainer?: () => HTMLElement;
 }
 
 function resolveMap(mapRef: unknown): MapLike | null {
@@ -262,7 +262,7 @@ export function useNavigationCamera({
     const duration = cameraMode === CAMERA_MODES.RECENTERING ? recentringDurationMs : 250;
     onCameraUpdate?.(target, { cameraMode, duration });
     const map = resolveMap(mapRef);
-    if (!map) return;
+    if (!map || !canApplyNavigationCamera(map)) return;
     const viewportHeight = map.getContainer?.().clientHeight ?? 0;
     map.easeTo({
       center: target.center,
@@ -292,7 +292,7 @@ export function useNavigationCamera({
     // de recentrar todavía debe llevar al usuario a la última posición útil.
     onCameraUpdate?.(target, { cameraMode: CAMERA_MODES.GPS_DEGRADED, duration: recentringDurationMs });
     const map = resolveMap(mapRef);
-    if (map) {
+    if (map && canApplyNavigationCamera(map)) {
       const viewportHeight = map.getContainer?.().clientHeight ?? 0;
       map.easeTo({
         center: target.center,

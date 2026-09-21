@@ -20,6 +20,12 @@ import { useAnimatedPosition } from '../navigation/useAnimatedPosition';
 import { applyArcgisBasemapStyle } from './arcgis-basemap';
 import { boundsFor, centerFor, routeGeoJson, toMapLibrePoint } from './map-geometry';
 import type { InteractiveMapMode, InteractiveMapProps } from './map-types';
+import {
+  enableMapInteractions,
+  observeNavigationMapSize,
+  shouldIgnoreMapError,
+  waitForNavigationStyleReady,
+} from './navigation-map-runtime';
 import { attachMapWebGlLifecycle, hasWebGl } from './webgl-support';
 import './interactive-map.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -138,14 +144,19 @@ export function InteractiveMapView({
   className = '',
 }: InteractiveMapProps) {
   const mapRef = useRef<MapRef | null>(null);
-  const [mapStyle, setMapStyle] = useState<StyleSpecification>(EMPTY_MAP_STYLE);
+  const [mapStyle, setMapStyle] = useState<StyleSpecification>(
+    mode === 'navigation' ? OSM_RASTER_STYLE : EMPTY_MAP_STYLE,
+  );
   const [token, setToken] = useState<string | null>(null);
   const [providerReason, setProviderReason] = useState<string | null>(null);
   const [provider, setProvider] = useState<'loading' | 'arcgis' | 'osm-fallback'>('loading');
+  const providerRef = useRef(provider);
   const [mapReady, setMapReady] = useState(false);
+  const [styleReady, setStyleReady] = useState(mode === 'navigation');
   const [webglAvailable] = useState(hasWebGl);
   const [contextLost, setContextLost] = useState(false);
   const contextLostRef = useRef(false);
+  const applyingStyleRef = useRef(false);
   const basemapAttemptRef = useRef<{ map: MapLibreMap; token: string } | null>(null);
   const navigation = useContext(NavegacionContext);
   const localFrame = useNavigationFrame(
@@ -164,10 +175,11 @@ export function InteractiveMapView({
   const navigationCamera = useNavigationCamera({
     frame: mode === 'navigation' ? navigationFrame : null,
     profile: navigation?.mode ?? 'walk',
-    active: mode === 'navigation' && mapReady && Boolean(navigation?.route),
+    active: mode === 'navigation' && mapReady && styleReady && Boolean(navigation?.route),
     gpsConfiable: navigation?.status === 'preview' || navigation?.gpsConfiable !== false,
     mapRef,
   });
+  providerRef.current = provider;
   const route = useMemo(() => routeGeoJson(routeGeometry), [routeGeometry]);
   const center = useMemo(() => centerFor(destinations, focusedDestination), [destinations, focusedDestination]);
 
@@ -187,12 +199,15 @@ export function InteractiveMapView({
     setProvider('osm-fallback');
     setProviderReason(reason);
     setMapStyle(OSM_RASTER_STYLE);
+    setStyleReady(true);
   }, []);
 
   const applyArcgisStyle = useCallback(async (map: MapLibreMap) => {
     if (!token) return;
     if (basemapAttemptRef.current?.map === map && basemapAttemptRef.current.token === token) return;
     basemapAttemptRef.current = { map, token };
+    applyingStyleRef.current = true;
+    setStyleReady(false);
     try {
       // Cargar el SDK de Esri solo en navegador evita que el runner de pruebas
       // intente resolver su bundle ESM contra el entrypoint CommonJS de MapLibre.
@@ -205,15 +220,26 @@ export function InteractiveMapView({
       });
       if (!applied) {
         basemapAttemptRef.current = null;
+        setStyleReady(true);
         return;
       }
+      // React must own the loaded style. applyTo() writes it on the MapLibre
+      // instance; without setMapStyle the EMPTY/OSM prop can wipe ArcGIS on
+      // the next render (common after DestinationPage remounts this map).
+      setMapStyle(applied);
       setProvider('arcgis');
       setProviderReason(null);
+      enableMapInteractions(map);
+      map.resize();
+      if (mode !== 'navigation') setStyleReady(true);
     } catch {
       basemapAttemptRef.current = null;
       useOsmFallback('style-error');
+      setStyleReady(true);
+    } finally {
+      applyingStyleRef.current = false;
     }
-  }, [token, useOsmFallback]);
+  }, [mode, token, useOsmFallback]);
 
   useEffect(() => {
     if (!mapReady || !token || !mapRef.current) return;
@@ -249,6 +275,21 @@ export function InteractiveMapView({
       if (bounds && destinations.length > 1) map.fitBounds(bounds, { padding: 48, duration: 0, maxZoom: 13 });
     }
   }, [destinations, focusedDestination, mapReady, mode]);
+
+  useEffect(() => {
+    if (mode !== 'navigation' || !mapReady || !mapRef.current) return undefined;
+    const map = mapRef.current.getMap();
+    const stopSize = observeNavigationMapSize(map);
+    const stopStyle = waitForNavigationStyleReady(map, () => {
+      enableMapInteractions(map);
+      map.resize();
+      setStyleReady(true);
+    });
+    return () => {
+      stopSize();
+      stopStyle();
+    };
+  }, [mapReady, mapStyle, mode]);
 
   const mapMarkers = destinations.map((destination) => (
     <Marker
@@ -288,12 +329,20 @@ export function InteractiveMapView({
         initialViewState={{ longitude: center[0], latitude: center[1], zoom: mode === 'navigation' ? 17 : 8.5 }}
         mapStyle={mapStyle}
         attributionControl={false}
+        cooperativeGestures={mode === 'navigation' ? false : undefined}
         onLoad={(event) => {
           setMapReady(true);
+          setStyleReady(true);
+          enableMapInteractions(event.target);
+          event.target.resize();
           void applyArcgisStyle(event.target);
         }}
         onError={() => {
-          if (contextLostRef.current) return;
+          if (shouldIgnoreMapError({
+            contextLost: contextLostRef.current,
+            applyingStyle: applyingStyleRef.current,
+            provider: providerRef.current,
+          })) return;
           useOsmFallback('network');
         }}
         onMoveStart={(event) => {
@@ -303,10 +352,14 @@ export function InteractiveMapView({
           if (mode === 'navigation') navigationCamera.finishRecentering();
         }}
       >
-        {provider === 'osm-fallback' && (
+        {(provider === 'osm-fallback' || (mode === 'navigation' && provider !== 'arcgis')) && (
           <AttributionControl compact customAttribution="© OpenStreetMap contributors" />
         )}
-        <NavigationControl position="bottom-right" showCompass={mode !== 'navigation'} />
+        <NavigationControl
+          position={mode === 'navigation' ? 'top-right' : 'bottom-right'}
+          showCompass={mode !== 'navigation'}
+          visualizePitch={mode === 'navigation'}
+        />
         {mapMarkers}
         {mode === 'navigation' && navigationFrame && (
           <Marker longitude={navigationFrame.rawPosition.lng} latitude={navigationFrame.rawPosition.lat} anchor="center">

@@ -11,6 +11,19 @@
   min-height: inherit;
 }
 
+.interactive-map--navigation,
+.interactive-map--navigation > .maplibregl-map,
+.interactive-map--navigation .maplibregl-canvas-container,
+.interactive-map--navigation .maplibregl-canvas {
+  height: 100%;
+  min-height: inherit;
+  touch-action: none;
+}
+
+.interactive-map--navigation .maplibregl-ctrl-top-right {
+  z-index: 4;
+}
+
 .interactive-map .maplibregl-ctrl-group {
   border-radius: 0.75rem;
   box-shadow: 0 0.25rem 0.8rem rgb(0 0 0 / 18%);
@@ -105,6 +118,16 @@
   position: absolute;
   right: 0.8rem;
   z-index: 3;
+}
+
+.interactive-map--navigation .interactive-map__recenter {
+  left: 0.8rem;
+  right: auto;
+}
+
+.interactive-map--navigation .interactive-map__status {
+  bottom: auto;
+  top: 0.8rem;
 }
 
 .interactive-map__recenter:hover,
