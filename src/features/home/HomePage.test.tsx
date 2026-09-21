@@ -1,11 +1,12 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { flushLazyInteractiveMap } from '../map/flush-lazy-map';
 import { HomePage } from './HomePage';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderHome() {
+async function renderHome() {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -18,6 +19,10 @@ function renderHome() {
     );
   });
 
+  await act(async () => {
+    await flushLazyInteractiveMap();
+  });
+
   return { container, root };
 }
 
@@ -25,8 +30,8 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-test('gives featured destinations a meaningful location action', () => {
-  const { container, root } = renderHome();
+test('gives featured destinations a meaningful location action', async () => {
+  const { container, root } = await renderHome();
 
   try {
     const featuredLinks = container.querySelectorAll<HTMLAnchorElement>(
@@ -47,8 +52,8 @@ test('gives featured destinations a meaningful location action', () => {
   }
 });
 
-test('embeds the overview map with municipalities and requested Itagui sites', () => {
-  const { container, root } = renderHome();
+test('embeds the overview map with municipalities and requested Itagui sites', async () => {
+  const { container, root } = await renderHome();
 
   try {
     expect(container.querySelector('.home-map [data-map-mode="overview"]')).toBeTruthy();

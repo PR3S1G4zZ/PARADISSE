@@ -1,5 +1,6 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { flushLazyInteractiveMap } from '../features/map/flush-lazy-map';
 import App from './App';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -25,7 +26,7 @@ const screen = {
 
 let appRoot: Root | undefined;
 
-function renderApp(path: string) {
+async function renderApp(path: string) {
   window.history.replaceState({}, '', path);
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -33,6 +34,10 @@ function renderApp(path: string) {
 
   act(() => {
     appRoot!.render(<App />);
+  });
+
+  await act(async () => {
+    await flushLazyInteractiveMap();
   });
 }
 
@@ -52,21 +57,21 @@ test.each([
   ['/registro', /^crea tu cuenta$/i],
   ['/iniciar-sesion', /^bienvenido de nuevo$/i],
   ['/pago', /inicia sesión para confirmar tu visita/i],
-])('renders the real heading for %s', (path, heading) => {
-  renderApp(path);
+])('renders the real heading for %s', async (path, heading) => {
+  await renderApp(path);
 
   expect(screen.getByRole('heading', { name: heading })).toBeTruthy();
 });
 
-test('uses the downloaded Figma photography for the home hero', () => {
-  renderApp('/');
+test('uses the downloaded Figma photography for the home hero', async () => {
+  await renderApp('/');
 
   const hero = screen.getByRole('img', { name: /^escena de viaje en el suroeste antioqueño$/i });
   expect(hero.getAttribute('src')).toBe('/assets/figma-hero-bus.webp');
 });
 
-test('navigates to Jardín from its map control', () => {
-  renderApp('/');
+test('navigates to Jardín from its map control', async () => {
+  await renderApp('/');
   const marker = screen.getByRole('link', { name: /ver jardín en el mapa/i });
 
   act(() => {
@@ -76,14 +81,14 @@ test('navigates to Jardín from its map control', () => {
   expect(screen.getByRole('heading', { name: /^jardín$/i })).toBeTruthy();
 });
 
-test('renders a not-found heading for an unknown route', () => {
-  renderApp('/inexistente');
+test('renders a not-found heading for an unknown route', async () => {
+  await renderApp('/inexistente');
 
   expect(screen.getByRole('heading', { name: /página no encontrada/i })).toBeTruthy();
 });
 
-test('navigates with a header link without leaving the app', () => {
-  renderApp('/');
+test('navigates with a header link without leaving the app', async () => {
+  await renderApp('/');
   const link = screen.getByRole('link', { name: /^destinos$/i });
 
   act(() => {
@@ -94,14 +99,14 @@ test('navigates with a header link without leaving the app', () => {
   expect(screen.getByRole('heading', { name: /encuentra tu próximo destino/i })).toBeTruthy();
 });
 
-test('makes login reachable from the header', () => {
-  renderApp('/');
+test('makes login reachable from the header', async () => {
+  await renderApp('/');
 
   expect(screen.getByRole('link', { name: /^iniciar sesión$/i }).getAttribute('href')).toBe('/iniciar-sesion');
 });
 
-test('navigates home through the logo without leaving the app', () => {
-  renderApp('/destinos');
+test('navigates home through the logo without leaving the app', async () => {
+  await renderApp('/destinos');
   const logo = screen.getByRole('link', { name: /^paradisse$/i });
 
   act(() => {
@@ -111,22 +116,22 @@ test('navigates home through the logo without leaving the app', () => {
   expect(screen.getByRole('heading', { name: /donde cada viaje es una aventura/i })).toBeTruthy();
 });
 
-test.each(['/registro', '/guias/jardin/gastronomia'])('keeps a single main landmark on %s', (path) => {
-  renderApp(path);
+test.each(['/registro', '/guias/jardin/gastronomia'])('keeps a single main landmark on %s', async (path) => {
+  await renderApp(path);
 
   expect(document.querySelectorAll('main')).toHaveLength(1);
 });
 
-test('labels the guide counter as guides instead of destination experiences', () => {
-  renderApp('/');
+test('labels the guide counter as guides instead of destination experiences', async () => {
+  await renderApp('/');
   const facts = document.querySelector<HTMLElement>('.home-facts');
 
   expect(facts?.textContent).toMatch(/guías para tu visita/i);
   expect(facts?.textContent).not.toMatch(/experiencias para tu visita/i);
 });
 
-test('renders the dark Figma home composition with regional facts and all municipalities', () => {
-  renderApp('/');
+test('renders the dark Figma home composition with regional facts and all municipalities', async () => {
+  await renderApp('/');
 
   expect(document.querySelector('.home-hero--dark')).toBeTruthy();
   expect(document.body.textContent).toMatch(/suroeste antioqueño/i);
@@ -135,8 +140,8 @@ test('renders the dark Figma home composition with regional facts and all munici
   expect(document.querySelectorAll('.home-destination-card')).toHaveLength(8);
 });
 
-test('keeps the Figma region image and facts card in the same composition', () => {
-  renderApp('/');
+test('keeps the Figma region image and facts card in the same composition', async () => {
+  await renderApp('/');
 
   expect(document.querySelector('.home-region .home-facts')).toBeTruthy();
   expect(document.body.textContent).toMatch(/paisajes cafeteros, sus coloridos pueblos patrimoniales/i);
@@ -144,8 +149,8 @@ test('keeps the Figma region image and facts card in the same composition', () =
   expect(document.body.textContent).toMatch(/municipios del suroeste/i);
 });
 
-test('renders the Figma navbar and footer content', () => {
-  renderApp('/');
+test('renders the Figma navbar and footer content', async () => {
+  await renderApp('/');
 
   const header = document.querySelector('.site-header');
   expect(header?.querySelector('a[href="/"]')).toBeTruthy();
@@ -155,8 +160,8 @@ test('renders the Figma navbar and footer content', () => {
   expect(document.querySelector('.site-footer')?.textContent).toMatch(/©\s*2026\s*Paradisse App/i);
 });
 
-test('renders the complete Nosotros composition with iconography', () => {
-  renderApp('/nosotros');
+test('renders the complete Nosotros composition with iconography', async () => {
+  await renderApp('/nosotros');
 
   expect(document.querySelector('.about-hero__backdrop')?.getAttribute('src')).toBe('/assets/suroeste-landscape.webp');
   expect(document.querySelector('.about-story__image')).toBeTruthy();

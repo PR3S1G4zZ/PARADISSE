@@ -183,7 +183,8 @@
 }
 
 .interactive-map__fallback-item a,
-.interactive-map__fallback-item > button:not(.interactive-map__marker) {
+.interactive-map__fallback-item > button:not(.interactive-map__marker),
+.interactive-map__retry {
   background: rgb(255 255 255 / 84%);
   border: 1px solid rgb(36 37 31 / 14%);
   border-radius: 999px;
@@ -193,6 +194,29 @@
   font-weight: 800;
   padding: 0.3rem 0.5rem;
   text-decoration: none;
+}
+
+.interactive-map__retry {
+  align-items: center;
+  display: inline-flex;
+  font: inherit;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+.interactive-map__retry:hover,
+.interactive-map__retry:focus-visible {
+  background: #fff;
+  color: #24251f;
+}
+
+.interactive-map--loading,
+.interactive-map--error {
+  min-height: inherit;
 }
 
 @media (max-width: 640px) {
