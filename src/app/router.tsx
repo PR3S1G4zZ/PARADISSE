@@ -3,6 +3,7 @@ import { EmptyState } from '../shared/ui/EmptyState';
 import { PageLayout } from '../shared/layout/PageLayout';
 import { AboutPage } from '../features/about/AboutPage';
 import { AuthPage } from '../features/auth/AuthPage';
+import { AuthProvider } from '../features/auth/AuthProvider';
 import { CheckoutPage } from '../features/checkout/CheckoutPage';
 import { DestinationPage } from '../features/destinations/DestinationPage';
 import { DestinationsPage } from '../features/destinations/DestinationsPage';
@@ -31,21 +32,23 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
 
   return (
     <BrowserRouter>
-      <NavegacionProvider>
-        <PageLayout>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/nosotros" element={<AboutPage />} />
-            <Route path="/destinos" element={<DestinationsPage />} />
-            <Route path="/destinos/:slug" element={<DestinationPage />} />
-            <Route path="/guias/:slug/:category" element={<GuidePage />} />
-            <Route path="/registro" element={<AuthPage mode="register" />} />
-            <Route path="/iniciar-sesion" element={<AuthPage mode="login" />} />
-            <Route path="/pago" element={<CheckoutPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </PageLayout>
-      </NavegacionProvider>
+      <AuthProvider>
+        <NavegacionProvider>
+          <PageLayout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/nosotros" element={<AboutPage />} />
+              <Route path="/destinos" element={<DestinationsPage />} />
+              <Route path="/destinos/:slug" element={<DestinationPage />} />
+              <Route path="/guias/:slug/:category" element={<GuidePage />} />
+              <Route path="/registro" element={<AuthPage mode="register" />} />
+              <Route path="/iniciar-sesion" element={<AuthPage mode="login" />} />
+              <Route path="/pago" element={<CheckoutPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </PageLayout>
+        </NavegacionProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

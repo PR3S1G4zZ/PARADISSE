@@ -1,5 +1,6 @@
+import { expect, test, vi } from 'vitest';
 import type { StorageAdapter } from '../../shared/lib/storage';
-import { createAuthService } from './auth-service';
+import { createAuthService, clearLegacyLocalAuth, LEGACY_SESSION_KEY, LEGACY_USERS_KEY } from './auth-service';
 
 const memoryStorage = (): StorageAdapter => {
   const values = new Map<string, unknown>();
@@ -10,33 +11,79 @@ const memoryStorage = (): StorageAdapter => {
   };
 };
 
-test('register creates a persisted authenticated session', () => {
-  const service = createAuthService(memoryStorage());
-  expect(service.registerLocal({ name: 'Ana', email: 'ana@example.com', password: 'secreto1' }).email)
-    .toBe('ana@example.com');
-  expect(service.getSession()?.name).toBe('Ana');
-});
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
-test('normalizes email addresses for registration and sign in', () => {
-  const service = createAuthService(memoryStorage());
-  const registered = service.registerLocal({
+test('register creates an authenticated session through the API', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+    id: 'user-1',
     name: 'Ana',
-    email: ' Ana@Example.COM ',
-    password: 'secreto1',
+    email: 'ana@example.com',
+  }, 201));
+  vi.stubGlobal('fetch', fetchMock);
+
+  const session = await createAuthService().register({
+    name: 'Ana',
+    email: 'ana@example.com',
+    password: 'Viaje2026',
   });
 
-  expect(registered.email).toBe('ana@example.com');
-  expect(service.signInLocal({ email: ' ANA@example.com ', password: 'secreto1' })?.id)
-    .toBe(registered.id);
+  expect(session.email).toBe('ana@example.com');
+  expect(fetchMock).toHaveBeenCalledOnce();
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(String(url)).toMatch(/\/api\/auth\/register$/);
+  expect(init.credentials).toBe('include');
+  expect(JSON.parse(init.body)).toEqual({
+    name: 'Ana',
+    email: 'ana@example.com',
+    password: 'Viaje2026',
+  });
+  vi.unstubAllGlobals();
 });
 
-test('rejects a duplicate email regardless of casing', () => {
-  const service = createAuthService(memoryStorage());
-  service.registerLocal({ name: 'Ana', email: 'ana@example.com', password: 'secreto1' });
+test('normalizes email addresses before login', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+    id: 'user-1',
+    name: 'Ana',
+    email: 'ana@example.com',
+  }));
+  vi.stubGlobal('fetch', fetchMock);
 
-  expect(() => service.registerLocal({
-    name: 'Otra Ana',
-    email: 'ANA@EXAMPLE.COM',
-    password: 'secreto2',
-  })).toThrow(/ya está registrado/i);
+  await createAuthService().signIn({ email: ' ANA@example.com ', password: 'Viaje2026' });
+
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    email: 'ANA@example.com',
+    password: 'Viaje2026',
+  });
+  expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  vi.unstubAllGlobals();
+});
+
+test('reads the session from GET /api/auth/me', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({
+    id: 'user-1',
+    name: 'Ana',
+    email: 'ana@example.com',
+  })));
+
+  await expect(createAuthService().getSession()).resolves.toEqual({
+    id: 'user-1',
+    name: 'Ana',
+    email: 'ana@example.com',
+  });
+  vi.unstubAllGlobals();
+});
+
+test('wipes plaintext local account keys after migration', () => {
+  const storage = memoryStorage();
+  storage.set(LEGACY_USERS_KEY, [{ email: 'ana@example.com', password: 'secreto1' }]);
+  storage.set(LEGACY_SESSION_KEY, { id: 'local', name: 'Ana', email: 'ana@example.com' });
+
+  expect(clearLegacyLocalAuth(storage)).toEqual({ hadLocalAccounts: true });
+  expect(storage.get(LEGACY_USERS_KEY, 'kept')).toBe('kept');
+  expect(storage.get(LEGACY_SESSION_KEY, 'kept')).toBe('kept');
 });

@@ -3,8 +3,11 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { config, hasArcgisOAuthCredentials, hasArcgisRoutingCredentials } from './config.js';
+import { getPool } from './db/pool.js';
+import { createPostgresAuthStore } from './auth/postgres-store.js';
 import { createMapRouter } from './routes/mapa.js';
 import { createRoutingRouter } from './routes/routing-route.js';
+import { createAuthRouter } from './routes/auth.js';
 import { routeResolver, validateRouteRequest } from './routes/routing.js';
 
 const RATE_LIMIT_MESSAGE = { error: 'Límite temporal de solicitudes alcanzado.' };
@@ -19,6 +22,11 @@ export function createApp({
   corsOrigin = config.corsOrigin,
   logger = console,
   mapaRateLimit = {},
+  authCredentialRateLimit = {},
+  authStore,
+  databaseUrl = config.databaseUrl,
+  cookieSecure = process.env.NODE_ENV === 'production',
+  sessionTtlMs = config.sessionTtlMs,
   } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -27,12 +35,48 @@ export function createApp({
   // real client IP without trusting arbitrary proxy chains.
   app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: false }));
-  app.use(cors({ origin: corsOrigin }));
+  app.use(cors({
+    origin: corsOrigin,
+    credentials: corsOrigin !== '*',
+  }));
   app.use(express.json({ limit: '32kb' }));
+
+  const resolvedAuthStore = authStore !== undefined
+    ? authStore
+    : (databaseUrl ? createPostgresAuthStore(getPool(databaseUrl)) : null);
 
   app.get('/health', (_request, response) => response.json({
     status: 'ok',
     service: 'paradisse-api',
+  }));
+
+  // Login/register are stricter than public map (30/5min) and routing (60/5min).
+  const credentialLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: RATE_LIMIT_MESSAGE,
+    ...authCredentialRateLimit,
+  });
+  const authLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 30,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: RATE_LIMIT_MESSAGE,
+  });
+
+  app.use('/api/auth', (request, response, next) => {
+    const path = String(request.originalUrl || request.path).split('?')[0];
+    const limiter = /\/api\/auth\/(login|register)\/?$/.test(path)
+      ? credentialLimiter
+      : authLimiter;
+    return limiter(request, response, next);
+  }, createAuthRouter({
+    store: resolvedAuthStore,
+    cookieSecure,
+    sessionTtlMs,
   }));
 
   // Token fetches are cheap but still dispense a basemap credential. 30/5min
@@ -64,7 +108,7 @@ export function createApp({
     const statusCode = Number(error?.statusCode) || 500;
     if (statusCode >= 500) {
       try {
-        logger.error('[routing] request failed', {
+        logger.error('[api] request failed', {
           method: request.method,
           path: request.path,
           statusCode,

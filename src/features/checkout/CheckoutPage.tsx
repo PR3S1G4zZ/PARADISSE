@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { guides } from '../../data/guides';
 import { municipalities } from '../../data/municipalities';
 import { getDestination } from '../destinations/destination-service';
+import { useAuth } from '../auth/AuthProvider';
 import { createStorageAdapter } from '../../shared/lib/storage';
 import type { Experience } from '../../shared/types/domain';
 import {
@@ -31,8 +32,8 @@ const experienceCatalog: PlannedExperience[] = [
 ];
 
 export function CheckoutPage() {
+  const { session } = useAuth();
   const checkout = useMemo(() => createCheckoutService(createStorageAdapter()), []);
-  const session = checkout.getSession();
   const plan = checkout.getPlan();
   const selectedDestinations = [
     ...plan.municipalities.map((slug) => getDestination(slug)).filter(Boolean),
@@ -102,7 +103,7 @@ export function CheckoutPage() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setConfirmation(checkout.confirmLocalCheckout(method, contact));
+    setConfirmation(checkout.confirmLocalCheckout(method, contact, session));
   };
 
   return (

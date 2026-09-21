@@ -2,31 +2,36 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { createStorageAdapter } from '../../shared/lib/storage';
-import { createAuthService } from '../auth/auth-service';
+import { AuthProvider } from '../auth/AuthProvider';
 import { createPlanService } from '../visit-plan/plan-service';
 import { createCheckoutService } from './checkout-service';
 import { CheckoutPage } from './CheckoutPage';
+import type { UserSession } from '../../shared/types/domain';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-function renderCheckout() {
+const testSession: UserSession = {
+  id: 'user-1',
+  name: 'Ana',
+  email: 'ana@example.com',
+};
+
+function renderCheckout(session: UserSession | null = null) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
 
   act(() => {
-    root.render(<MemoryRouter><CheckoutPage /></MemoryRouter>);
+    root.render(
+      <MemoryRouter>
+        <AuthProvider initialSession={session}>
+          <CheckoutPage />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
   });
 
   return { container, root };
-}
-
-function registerSession() {
-  createAuthService(createStorageAdapter()).registerLocal({
-    name: 'Ana',
-    email: 'ana@example.com',
-    password: 'secreto1',
-  });
 }
 
 function setInputValue(input: HTMLInputElement, value: string) {
@@ -91,16 +96,15 @@ test('shows selected Itagui sites as part of the local visit plan', () => {
 });
 
 test('rehydrates a persisted local confirmation when checkout mounts again', () => {
-  registerSession();
   const storage = createStorageAdapter();
   createPlanService(storage).addExperience('jardin-cafe');
   createCheckoutService(storage).confirmLocalCheckout('transferencia', {
     name: 'Ana Pérez',
     email: 'ana@example.com',
     phone: '3001234567',
-  });
+  }, testSession);
 
-  const { container, root } = renderCheckout();
+  const { container, root } = renderCheckout(testSession);
   const status = container.querySelector<HTMLElement>('[role="status"]');
   const transfer = container.querySelector<HTMLInputElement>('input[name="payment-method"][value="transferencia"]');
   const card = container.querySelector<HTMLInputElement>('input[name="payment-method"][value="tarjeta"]');
@@ -121,8 +125,7 @@ test('rehydrates a persisted local confirmation when checkout mounts again', () 
 });
 
 test('persists the contact entered with the local confirmation', async () => {
-  registerSession();
-  const { container, root } = renderCheckout();
+  const { container, root } = renderCheckout(testSession);
   const phone = container.querySelector<HTMLInputElement>('input[name="phone"]');
   const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
 
@@ -136,5 +139,6 @@ test('persists the contact entered with the local confirmation', async () => {
 
   const persisted = JSON.parse(localStorage.getItem('paradisse.checkout.confirmation') ?? '{}');
   expect(persisted.contact).toEqual({ name: 'Ana', email: 'ana@example.com', phone: '3001234567' });
+  expect(persisted.session).toEqual(testSession);
   act(() => root.unmount());
 });
