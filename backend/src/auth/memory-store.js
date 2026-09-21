@@ -41,8 +41,7 @@ export function createMemoryAuthStore() {
       const user = users.get(session.userId);
       if (!user) return null;
       return {
-        id: session.id,
-        userId: user.id,
+        id: user.id,
         name: user.name,
         email: user.email,
       };

@@ -190,7 +190,7 @@ describe('auth API', () => {
       '[api] request failed',
       {
         method: 'POST',
-        path: '/login',
+        path: '/api/auth/login',
         statusCode: 500,
       },
     ]]);

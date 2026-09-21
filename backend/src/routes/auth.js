@@ -4,7 +4,7 @@ import { SESSION_COOKIE, sessionCookieOptions, readSessionToken } from '../auth/
 import { validateLoginBody, validateRegisterBody } from '../auth/validation.js';
 
 function toPublicUser(user) {
-  return { id: user.id ?? user.userId, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email };
 }
 
 export function createAuthRouter({

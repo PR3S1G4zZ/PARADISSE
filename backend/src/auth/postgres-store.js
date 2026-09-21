@@ -33,7 +33,7 @@ export function createPostgresAuthStore(pool) {
 
     async findValidSessionByTokenHash(tokenHash, now) {
       const { rows } = await pool.query(
-        `SELECT s.id, u.id AS "userId", u.name, u.email
+        `SELECT u.id, u.name, u.email
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token_hash = $1 AND s.expires_at > $2
