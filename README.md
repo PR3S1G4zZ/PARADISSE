@@ -52,6 +52,8 @@ El servicio frontend (raíz del repo) se sirve con Caddy (`Caddyfile`). El backe
 
 ## Comprobaciones
 
+GitHub Actions ejecuta `pnpm test` y `pnpm test:backend` en cada pull request y en cada push a `main`. Un job aparte falla si hay vulnerabilidades críticas en las dependencias de producción.
+
 ```powershell
 pnpm test
 pnpm test:backend
