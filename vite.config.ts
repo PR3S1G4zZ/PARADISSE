@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 const apiProxy = {
   '/api': {
-    target: process.env.API_UPSTREAM || 'http://localhost:3001',
+    target: 'http://localhost:3001',
     changeOrigin: true,
   },
 };

@@ -13,7 +13,7 @@ pnpm dev:backend
 pnpm dev
 ```
 
-El frontend corre en `http://localhost:5173` y el backend en `http://localhost:3001`. Vite proxifica `/api` → `http://localhost:3001` (o `API_UPSTREAM` si está definido), así que el navegador llama rutas relativas y la cookie de sesión es same-origin.
+El frontend corre en `http://localhost:5173` y el backend en `http://localhost:3001`. Vite proxifica `/api` → `http://localhost:3001`, así que el navegador llama rutas relativas y la cookie de sesión es same-origin.
 
 La autenticación (Phase 1) requiere Postgres. El plan de visita y el checkout local siguen en `localStorage` (Phase 2/3).
 
