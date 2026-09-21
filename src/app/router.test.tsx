@@ -1,5 +1,6 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { flushLazyInteractiveMap } from '../features/map/flush-lazy-map';
 import App from './App';
 
@@ -26,6 +27,26 @@ const screen = {
 
 let appRoot: Root | undefined;
 
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/auth/me')) {
+      return new Response(JSON.stringify({ error: 'No autenticado.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/mapa/token')) {
+      return new Response(JSON.stringify({
+        token: null,
+        proveedor: 'osm-fallback',
+        motivo: 'not-configured',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({}), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  }));
+});
+
 async function renderApp(path: string) {
   window.history.replaceState({}, '', path);
   const container = document.createElement('div');
@@ -46,6 +67,7 @@ afterEach(() => {
   appRoot = undefined;
   document.body.replaceChildren();
   localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 test.each([

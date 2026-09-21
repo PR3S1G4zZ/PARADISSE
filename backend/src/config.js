@@ -21,6 +21,8 @@ export function resolveCorsOrigin(
 export const config = {
   port: Number(process.env.PORT || 3001),
   corsOrigin: resolveCorsOrigin(),
+  databaseUrl: process.env.DATABASE_URL || '',
+  sessionTtlMs: Number(process.env.SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000),
   routingTimeoutMs: Number(process.env.ROUTING_HTTP_TIMEOUT_MS || 8000),
   arcgis: {
     basemapApiKey: process.env.ARCGIS_BASEMAP_API_KEY || '',

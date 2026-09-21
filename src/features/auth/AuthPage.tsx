@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { FiArrowRight, FiCheck, FiEye, FiEyeOff, FiMap, FiShield } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
-import { createAuthService } from './auth-service';
-import { createStorageAdapter, type StorageAdapter } from '../../shared/lib/storage';
+import { useAuth } from './AuthProvider';
 import type { UserSession } from '../../shared/types/domain';
 import { Button } from '../../shared/ui/Button';
 import {
@@ -19,7 +18,6 @@ type AuthMode = 'register' | 'login';
 interface AuthPageProps {
   mode: AuthMode;
   onSuccess?: (session: UserSession) => void;
-  storage?: StorageAdapter;
 }
 
 interface FormValues {
@@ -38,8 +36,9 @@ const passwordStrengthLabels: Record<PasswordStrength, string> = {
   strong: 'Muy segura',
 };
 
-export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
+export function AuthPage({ mode, onSuccess }: AuthPageProps) {
   const navigate = useNavigate();
+  const { register, signIn, hadLocalAccounts } = useAuth();
   const [values, setValues] = useState<FormValues>(initialValues);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitError, setSubmitError] = useState<string>();
@@ -60,7 +59,7 @@ export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
     setSubmitError(undefined);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = isRegistering ? validateRegistration(values) : validateLogin(values);
     setErrors(nextErrors);
@@ -70,15 +69,9 @@ export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
 
     setIsSubmitting(true);
     try {
-      const service = createAuthService(storage ?? createStorageAdapter());
       const session = isRegistering
-        ? service.registerLocal({ name: values.name.trim(), email: values.email.trim(), password: values.password })
-        : service.signInLocal({ email: values.email.trim(), password: values.password });
-
-      if (!session) {
-        setSubmitError('Correo o contraseña incorrectos.');
-        return;
-      }
+        ? await register({ name: values.name.trim(), email: values.email.trim(), password: values.password })
+        : await signIn({ email: values.email.trim(), password: values.password });
 
       if (onSuccess) onSuccess(session);
       else navigate('/pago');
@@ -248,7 +241,12 @@ export function AuthPage({ mode, onSuccess, storage }: AuthPageProps) {
             <div className="auth-form-status" aria-live="polite" aria-atomic="true">
               {submitError && <p className="auth-error" role="alert">{submitError}</p>}
             </div>
-            <p className="auth-note">Sesión local en este dispositivo.</p>
+            {hadLocalAccounts && (
+              <p className="auth-note auth-note--migration" role="status">
+                Las cuentas guardadas solo en este dispositivo ya no están disponibles. Crea una cuenta de nuevo.
+              </p>
+            )}
+            <p className="auth-note">Tu sesión se guarda de forma segura en este navegador.</p>
             <Button className="auth-submit" type="submit" disabled={isSubmitting}>
               <span>{isSubmitting ? 'Procesando…' : action}</span>
               {!isSubmitting && <FiArrowRight aria-hidden="true" />}

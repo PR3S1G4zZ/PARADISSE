@@ -175,7 +175,7 @@ test('logs a safe request summary for backend route failures', async () => {
 
   expect(response.status).toBe(502);
   expect(entries).toEqual([[
-    '[routing] request failed',
+    '[api] request failed',
     {
       method: 'POST',
       path: '/api/rutas/resolver',

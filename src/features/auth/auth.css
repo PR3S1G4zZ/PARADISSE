@@ -345,6 +345,10 @@
   margin: 0;
 }
 
+.auth-note--migration {
+  color: #8a5a22;
+}
+
 .auth-submit {
   align-items: center;
   background: var(--color-olive);

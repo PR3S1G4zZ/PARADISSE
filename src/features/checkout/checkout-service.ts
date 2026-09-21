@@ -1,4 +1,3 @@
-import { createAuthService } from '../auth/auth-service';
 import { createPlanService } from '../visit-plan/plan-service';
 import type { StorageAdapter } from '../../shared/lib/storage';
 import type { UserSession, VisitPlan } from '../../shared/types/domain';
@@ -22,16 +21,17 @@ export interface LocalCheckoutConfirmation {
 const CONFIRMATION_KEY = 'paradisse.checkout.confirmation';
 
 export const createCheckoutService = (storage: StorageAdapter) => {
-  const { getSession } = createAuthService(storage);
   const { getPlan } = createPlanService(storage);
 
   return {
-    getSession,
     getPlan,
     getConfirmation: (): LocalCheckoutConfirmation | null =>
       storage.get<LocalCheckoutConfirmation | null>(CONFIRMATION_KEY, null),
-    confirmLocalCheckout: (method: CheckoutMethod, contact?: CheckoutContact): LocalCheckoutConfirmation => {
-      const session = getSession();
+    confirmLocalCheckout: (
+      method: CheckoutMethod,
+      contact?: CheckoutContact,
+      session?: UserSession | null,
+    ): LocalCheckoutConfirmation => {
       if (!session) {
         throw new Error('Debes iniciar sesión antes de confirmar tu reserva.');
       }

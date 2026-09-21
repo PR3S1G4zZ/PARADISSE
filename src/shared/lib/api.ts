@@ -1,8 +1,16 @@
-import type { GeoPoint, TravelMode } from '../types/domain';
+import type { GeoPoint, TravelMode, UserSession } from '../types/domain';
 import { routeRequestBody } from './route-request';
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ?? (import.meta.env.PROD ? '' : 'http://localhost:3001');
+/**
+ * Same-origin by default so SameSite=Lax session cookies work.
+ * Leave VITE_API_URL unset/empty in production and local (Vite/Caddy proxy /api).
+ */
+export function resolveApiBase(raw: unknown = import.meta.env.VITE_API_URL): string {
+  if (typeof raw !== 'string') return '';
+  return raw.trim().replace(/\/+$/, '');
+}
+
+const API_BASE = resolveApiBase();
 
 export interface BasemapTokenResult {
   token: string | null;
@@ -50,6 +58,7 @@ interface ResolveRouteOptions {
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   if (typeof fetch !== 'function') throw new Error('fetch-unavailable');
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     ...init,
     headers: { Accept: 'application/json', ...(init?.headers ?? {}) },
   });
@@ -81,6 +90,32 @@ export const mapaApi = {
     }
   },
   estado: async () => getJson<{ basemap: 'arcgis' | 'osm-fallback'; motivoBasemap: string | null; proveedorRutas: 'arcgis' | 'osrm' }>('/api/mapa/estado'),
+};
+
+export const authApi = {
+  register: (input: { name: string; email: string; password: string }) =>
+    getJson<UserSession>('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  login: (input: { email: string; password: string }) =>
+    getJson<UserSession>('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  logout: () => getJson<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
+  me: async (): Promise<UserSession | null> => {
+    try {
+      return await getJson<UserSession>('/api/auth/me');
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'status' in error && Number(error.status) === 401) {
+        return null;
+      }
+      return null;
+    }
+  },
 };
 
 export const rutasApi = {

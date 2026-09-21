@@ -1,8 +1,9 @@
+import { authApi } from '../../shared/lib/api';
 import type { StorageAdapter } from '../../shared/lib/storage';
 import type { UserSession } from '../../shared/types/domain';
 
-const SESSION_KEY = 'paradisse.session';
-const USERS_KEY = 'paradisse.local-users';
+export const LEGACY_SESSION_KEY = 'paradisse.session';
+export const LEGACY_USERS_KEY = 'paradisse.local-users';
 
 export interface RegisterInput {
   name: string;
@@ -15,45 +16,28 @@ export interface SignInInput {
   password: string;
 }
 
-interface StoredUser extends UserSession {
-  password: string;
+export interface AuthService {
+  register: (input: RegisterInput) => Promise<UserSession>;
+  signIn: (input: SignInInput) => Promise<UserSession>;
+  signOut: () => Promise<void>;
+  getSession: () => Promise<UserSession | null>;
 }
 
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
+export function clearLegacyLocalAuth(storage: StorageAdapter): { hadLocalAccounts: boolean } {
+  const users = storage.get<unknown>(LEGACY_USERS_KEY, null);
+  const hadLocalAccounts = Array.isArray(users) && users.length > 0;
+  storage.remove(LEGACY_SESSION_KEY);
+  storage.remove(LEGACY_USERS_KEY);
+  return { hadLocalAccounts };
+}
 
-export const createAuthService = (storage: StorageAdapter) => ({
-  registerLocal: ({ name, email, password }: RegisterInput): UserSession => {
-    const users = storage.get<StoredUser[]>(USERS_KEY, []);
-    const normalizedEmail = normalizeEmail(email);
-    const existing = users.find((user) => normalizeEmail(user.email) === normalizedEmail);
-    if (existing) {
-      throw new Error('El correo ya está registrado');
-    }
-
-    const user: StoredUser = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      email: normalizedEmail,
-      password,
-    };
-    storage.set(USERS_KEY, [...users, user]);
-    const session: UserSession = { id: user.id, name: user.name, email: user.email };
-    storage.set(SESSION_KEY, session);
-    return session;
+export const createAuthService = (api = authApi): AuthService => ({
+  register: ({ name, email, password }: RegisterInput) =>
+    api.register({ name: name.trim(), email: email.trim(), password }),
+  signIn: ({ email, password }: SignInInput) =>
+    api.login({ email: email.trim(), password }),
+  signOut: async () => {
+    await api.logout();
   },
-
-  signInLocal: ({ email, password }: SignInInput): UserSession | null => {
-    const normalizedEmail = normalizeEmail(email);
-    const user = storage.get<StoredUser[]>(USERS_KEY, []).find(
-      (candidate) => normalizeEmail(candidate.email) === normalizedEmail && candidate.password === password,
-    );
-    if (!user) return null;
-    const session: UserSession = { id: user.id, name: user.name, email: normalizedEmail };
-    storage.set(SESSION_KEY, session);
-    return session;
-  },
-
-  signOut: (): void => storage.remove(SESSION_KEY),
-
-  getSession: (): UserSession | null => storage.get<UserSession | null>(SESSION_KEY, null),
+  getSession: () => api.me(),
 });
