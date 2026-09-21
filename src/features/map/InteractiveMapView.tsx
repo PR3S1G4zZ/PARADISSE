@@ -1,10 +1,9 @@
+import './configure-maplibre-worker';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Map, {
   AttributionControl,
-  Layer,
   Marker,
   NavigationControl,
-  Source,
   type MapRef,
 } from 'react-map-gl/maplibre';
 import type { Map as MapLibreMap, StyleSpecification } from 'maplibre-gl';
@@ -26,6 +25,7 @@ import {
   shouldIgnoreMapError,
   waitForNavigationStyleReady,
 } from './navigation-map-runtime';
+import { syncNavigationRoute } from './navigation-route-layer';
 import { attachMapWebGlLifecycle, hasWebGl } from './webgl-support';
 import './interactive-map.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -51,17 +51,6 @@ const OSM_RASTER_STYLE: StyleSpecification = {
     },
   },
   layers: [{ id: 'osm-raster', type: 'raster', source: 'osm' }],
-};
-
-const routeLineLayer = {
-  id: 'paradisse-route-line',
-  type: 'line' as const,
-  paint: {
-    'line-color': '#2f6fed',
-    'line-width': 5,
-    'line-opacity': 0.9,
-  },
-  layout: { 'line-cap': 'round' as const, 'line-join': 'round' as const },
 };
 
 const BASEMAP_REASON_LABELS: Record<string, string> = {
@@ -181,6 +170,8 @@ export function InteractiveMapView({
   });
   providerRef.current = provider;
   const route = useMemo(() => routeGeoJson(routeGeometry), [routeGeometry]);
+  const routeRef = useRef(route);
+  routeRef.current = route;
   const center = useMemo(() => centerFor(destinations, focusedDestination), [destinations, focusedDestination]);
 
   useEffect(() => {
@@ -291,6 +282,19 @@ export function InteractiveMapView({
     };
   }, [mapReady, mapStyle, mode]);
 
+  useEffect(() => {
+    if (!showRoute || !mapReady || !mapRef.current) return undefined;
+    const map = mapRef.current.getMap();
+    const applyRoute = () => {
+      syncNavigationRoute(map, routeRef.current);
+    };
+    applyRoute();
+    map.on('style.load', applyRoute);
+    return () => {
+      map.off('style.load', applyRoute);
+    };
+  }, [mapReady, route, showRoute]);
+
   const mapMarkers = destinations.map((destination) => (
     <Marker
       key={destination.slug}
@@ -383,11 +387,6 @@ export function InteractiveMapView({
               <FiNavigation aria-hidden="true" />
             </span>
           </Marker>
-        )}
-        {showRoute && route && (
-          <Source id="paradisse-route" type="geojson" data={route}>
-            <Layer {...routeLineLayer} />
-          </Source>
         )}
       </Map>
       {mode === 'navigation' && (

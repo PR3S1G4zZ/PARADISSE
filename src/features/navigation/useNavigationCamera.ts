@@ -219,6 +219,7 @@ export function useNavigationCamera({
   const resumeModeRef = useRef<CameraMode>(CAMERA_MODES.FOLLOWING);
   const previousBearingRef = useRef<number | null>(null);
   const previousTimestampRef = useRef<number | null>(null);
+  const hasLockedOnUserRef = useRef(false);
 
   const updateMode = useCallback((nextMode: CameraMode) => {
     if (cameraModeRef.current === nextMode) return false;
@@ -229,6 +230,7 @@ export function useNavigationCamera({
 
   useEffect(() => {
     if (!active) {
+      hasLockedOnUserRef.current = false;
       updateMode(CAMERA_MODES.OVERVIEW);
       return;
     }
@@ -254,24 +256,52 @@ export function useNavigationCamera({
   );
 
   useEffect(() => {
-    if (!cameraTarget || (cameraMode !== CAMERA_MODES.FOLLOWING && cameraMode !== CAMERA_MODES.RECENTERING)) return;
-    const target = buildCameraTarget(frame, profile, previousBearingRef.current, previousTimestampRef.current);
-    if (!target) return;
-    previousBearingRef.current = target.bearing;
-    previousTimestampRef.current = Number.isFinite(frame?.timestamp) ? frame!.timestamp : previousTimestampRef.current;
-    const duration = cameraMode === CAMERA_MODES.RECENTERING ? recentringDurationMs : 250;
-    onCameraUpdate?.(target, { cameraMode, duration });
+    if (!cameraTarget || (cameraMode !== CAMERA_MODES.FOLLOWING && cameraMode !== CAMERA_MODES.RECENTERING)) return undefined;
+    let cancelled = false;
+
+    const apply = () => {
+      if (cancelled) return true;
+      const target = buildCameraTarget(frame, profile, previousBearingRef.current, previousTimestampRef.current);
+      if (!target) return true;
+      const map = resolveMap(mapRef);
+      if (!map || !canApplyNavigationCamera(map)) return false;
+      const duration = cameraMode === CAMERA_MODES.RECENTERING
+        ? recentringDurationMs
+        : hasLockedOnUserRef.current ? 250 : 0;
+      previousBearingRef.current = target.bearing;
+      previousTimestampRef.current = Number.isFinite(frame?.timestamp) ? frame!.timestamp : previousTimestampRef.current;
+      onCameraUpdate?.(target, { cameraMode, duration });
+      const viewportHeight = map.getContainer?.().clientHeight ?? 0;
+      map.easeTo({
+        center: target.center,
+        bearing: target.bearing,
+        pitch: target.pitch,
+        zoom: target.zoom,
+        offset: cameraOffsetForAnchor(target.anchorRatio, viewportHeight),
+        duration,
+      });
+      hasLockedOnUserRef.current = true;
+      return true;
+    };
+
+    if (apply()) {
+      return () => { cancelled = true; };
+    }
+
     const map = resolveMap(mapRef);
-    if (!map || !canApplyNavigationCamera(map)) return;
-    const viewportHeight = map.getContainer?.().clientHeight ?? 0;
-    map.easeTo({
-      center: target.center,
-      bearing: target.bearing,
-      pitch: target.pitch,
-      zoom: target.zoom,
-      offset: cameraOffsetForAnchor(target.anchorRatio, viewportHeight),
-      duration,
-    });
+    const retry = () => {
+      if (apply()) {
+        map?.off?.('idle', retry);
+        map?.off?.('style.load', retry);
+      }
+    };
+    map?.on?.('idle', retry);
+    map?.on?.('style.load', retry);
+    return () => {
+      cancelled = true;
+      map?.off?.('idle', retry);
+      map?.off?.('style.load', retry);
+    };
   }, [cameraMode, cameraTarget, frame, mapRef, onCameraUpdate, profile, recentringDurationMs]);
 
   const handleGesture = useCallback((event: unknown) => {
