@@ -42,6 +42,18 @@ describe('navigation map runtime', () => {
     })).toBe(true);
   });
 
+  test('allows follow once the style document is applied, even if tiles are still loading', () => {
+    expect(canApplyNavigationCamera({
+      isStyleLoaded: () => false,
+      style: { _loaded: true },
+      getContainer: () => ({ clientHeight: 320, clientWidth: 480 }),
+    })).toBe(true);
+    expect(canApplyNavigationCamera({
+      style: { _loaded: false },
+      getContainer: () => ({ clientHeight: 320, clientWidth: 480 }),
+    })).toBe(false);
+  });
+
   test('resizes the map and then re-enables handlers', () => {
     const map = {
       resize: vi.fn(),

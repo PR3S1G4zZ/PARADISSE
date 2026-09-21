@@ -13,6 +13,8 @@ type MapHandler = { enable?: () => void; isEnabled?: () => boolean };
 export type NavigationMapLike = {
   resize?: () => void;
   isStyleLoaded?: () => boolean | void;
+  /** MapLibre style document flag. True once setStyle has applied, even while tiles are still loading. */
+  style?: { _loaded?: boolean };
   getContainer?: () => { clientHeight?: number; clientWidth?: number };
   on?: (type: string, listener: () => void) => void;
   off?: (type: string, listener: () => void) => void;
@@ -50,6 +52,11 @@ export function mapHasUsableViewport(map: NavigationMapLike | null | undefined):
 
 export function canApplyNavigationCamera(map: NavigationMapLike | null | undefined): boolean {
   if (!map || !mapHasUsableViewport(map)) return false;
+  // isStyleLoaded() is false while any source — including an in-flight GeoJSON
+  // route or OSM tiles — is still settling. That must not freeze follow:
+  // easeTo only needs the style document to be applied.
+  if (map.style?._loaded === true) return true;
+  if (map.style?._loaded === false) return false;
   if (typeof map.isStyleLoaded === 'function' && map.isStyleLoaded() === false) return false;
   return true;
 }

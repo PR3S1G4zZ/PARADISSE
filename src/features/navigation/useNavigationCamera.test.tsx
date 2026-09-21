@@ -24,11 +24,26 @@ const frame: NavigationFrame = {
 };
 
 let root: Root | undefined;
-let mapRef: { current: { easeTo: ReturnType<typeof vi.fn>; getContainer: () => HTMLElement } };
+let mapRef: {
+  current: {
+    easeTo: ReturnType<typeof vi.fn>;
+    getContainer: () => HTMLElement;
+    isStyleLoaded?: () => boolean;
+    style?: { _loaded?: boolean };
+    on?: (type: string, listener: () => void) => void;
+    off?: (type: string, listener: () => void) => void;
+  };
+};
 
-function Harness({ gpsConfiable = true }: { gpsConfiable?: boolean }) {
+function Harness({
+  gpsConfiable = true,
+  navigationFrame = frame,
+}: {
+  gpsConfiable?: boolean;
+  navigationFrame?: NavigationFrame;
+}) {
   const camera = useNavigationCamera({
-    frame,
+    frame: navigationFrame,
     active: true,
     gpsConfiable,
     mapRef,
@@ -76,13 +91,54 @@ test('changes to FREE only for a user gesture and recenters back onto the route'
   expect(mapRef.current.easeTo).toHaveBeenCalled();
 });
 
-test('animates following camera updates instead of jumping on every GPS fix', () => {
+test('jumps to the user on the first lock, then eases later fixes', () => {
+  const container = renderCamera();
+
+  expect(mapRef.current.easeTo).toHaveBeenCalledTimes(1);
+  expect(mapRef.current.easeTo.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+    bearing: expect.any(Number),
+    center: expect.any(Array),
+    duration: 0,
+  }));
+
+  act(() => {
+    root!.render(
+      <Harness navigationFrame={{
+        ...frame,
+        displayPosition: { lat: 6.171, lng: -75.611 },
+        timestamp: frame.timestamp + 1000,
+      }} />,
+    );
+  });
+
+  expect(mapRef.current.easeTo.mock.calls.at(-1)?.[0].duration).toBeGreaterThan(0);
+  expect(container.querySelector('[data-mode]')?.textContent).toBe(CAMERA_MODES.FOLLOWING);
+});
+
+test('applies follow once the style document is ready even if tiles are still loading', () => {
+  const listeners = new Map<string, () => void>();
+  let styleLoaded = false;
+  mapRef = {
+    current: {
+      easeTo: vi.fn(),
+      getContainer: () => ({ clientHeight: 800, clientWidth: 400 } as HTMLElement),
+      isStyleLoaded: () => false,
+      style: { get _loaded() { return styleLoaded; } },
+      on: vi.fn((type: string, listener: () => void) => { listeners.set(type, listener); }),
+      off: vi.fn(),
+    },
+  };
+
   renderCamera();
+  expect(mapRef.current.easeTo).not.toHaveBeenCalled();
+
+  styleLoaded = true;
+  act(() => { listeners.get('style.load')?.(); });
 
   expect(mapRef.current.easeTo).toHaveBeenCalledWith(expect.objectContaining({
-    duration: expect.any(Number),
+    duration: 0,
+    bearing: expect.any(Number),
   }));
-  expect(mapRef.current.easeTo.mock.calls.at(-1)?.[0].duration).toBeGreaterThan(0);
 });
 
 test('pauses following when live GPS becomes unreliable', () => {

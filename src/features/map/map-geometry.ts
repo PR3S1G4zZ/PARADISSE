@@ -9,7 +9,7 @@ export const routeGeoJson = (points: Array<[number, number]> = []) => points.len
     properties: {},
     geometry: {
       type: 'LineString' as const,
-      coordinates: points.map(([lat, lng]) => [lng, lat]),
+      coordinates: points.map(([lat, lng]) => [lng, lat] as [number, number]),
     },
   };
 
