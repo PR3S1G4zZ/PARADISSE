@@ -6,7 +6,7 @@ export function PageLayout({ children }: PropsWithChildren) {
   return (
     <>
       <SiteHeader />
-      <main>{children}</main>
+      <main className="site-main">{children}</main>
       <SiteFooter />
     </>
   );

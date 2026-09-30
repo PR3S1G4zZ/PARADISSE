@@ -19,15 +19,23 @@ interface StoredUser extends UserSession {
   password: string;
 }
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 export const createAuthService = (storage: StorageAdapter) => ({
   registerLocal: ({ name, email, password }: RegisterInput): UserSession => {
     const users = storage.get<StoredUser[]>(USERS_KEY, []);
-    const existing = users.find((user) => user.email === email);
+    const normalizedEmail = normalizeEmail(email);
+    const existing = users.find((user) => normalizeEmail(user.email) === normalizedEmail);
     if (existing) {
       throw new Error('El correo ya está registrado');
     }
 
-    const user: StoredUser = { id: crypto.randomUUID(), name, email, password };
+    const user: StoredUser = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+    };
     storage.set(USERS_KEY, [...users, user]);
     const session: UserSession = { id: user.id, name: user.name, email: user.email };
     storage.set(SESSION_KEY, session);
@@ -35,11 +43,12 @@ export const createAuthService = (storage: StorageAdapter) => ({
   },
 
   signInLocal: ({ email, password }: SignInInput): UserSession | null => {
+    const normalizedEmail = normalizeEmail(email);
     const user = storage.get<StoredUser[]>(USERS_KEY, []).find(
-      (candidate) => candidate.email === email && candidate.password === password,
+      (candidate) => normalizeEmail(candidate.email) === normalizedEmail && candidate.password === password,
     );
     if (!user) return null;
-    const session: UserSession = { id: user.id, name: user.name, email: user.email };
+    const session: UserSession = { id: user.id, name: user.name, email: normalizedEmail };
     storage.set(SESSION_KEY, session);
     return session;
   },

@@ -58,11 +58,11 @@ test.each([
   expect(screen.getByRole('heading', { name: heading })).toBeTruthy();
 });
 
-test('uses a visible local landscape for the home hero', () => {
+test('uses the downloaded Figma photography for the home hero', () => {
   renderApp('/');
 
-  const hero = screen.getByRole('img', { name: /^paisaje del suroeste antioqueño$/i });
-  expect(hero.getAttribute('src')).toBe('/assets/suroeste-landscape.png');
+  const hero = screen.getByRole('img', { name: /^escena de viaje en el suroeste antioqueño$/i });
+  expect(hero.getAttribute('src')).toBe('/assets/figma-hero-bus.webp');
 });
 
 test('navigates to Jardín from its map control', () => {
@@ -123,4 +123,45 @@ test('labels the guide counter as guides instead of destination experiences', ()
 
   expect(facts?.textContent).toMatch(/guías para tu visita/i);
   expect(facts?.textContent).not.toMatch(/experiencias para tu visita/i);
+});
+
+test('renders the dark Figma home composition with regional facts and all municipalities', () => {
+  renderApp('/');
+
+  expect(document.querySelector('.home-hero--dark')).toBeTruthy();
+  expect(document.body.textContent).toMatch(/suroeste antioqueño/i);
+  expect(document.body.textContent).toMatch(/22º\s*-\s*28ºC/i);
+  expect(document.body.textContent).toMatch(/100\s*-\s*4000\s*m\s*s\.\s*n\.\s*m\./i);
+  expect(document.querySelectorAll('.home-destination-card')).toHaveLength(8);
+});
+
+test('keeps the Figma region image and facts card in the same composition', () => {
+  renderApp('/');
+
+  expect(document.querySelector('.home-region .home-facts')).toBeTruthy();
+  expect(document.body.textContent).toMatch(/paisajes cafeteros, sus coloridos pueblos patrimoniales/i);
+  expect(document.body.textContent).toMatch(/entre montañas, café y pueblos con alma paisa/i);
+  expect(document.body.textContent).toMatch(/municipios del suroeste/i);
+});
+
+test('renders the Figma navbar and footer content', () => {
+  renderApp('/');
+
+  const header = document.querySelector('.site-header');
+  expect(header?.querySelector('a[href="/"]')).toBeTruthy();
+  expect(header?.querySelector('a[href="/nosotros"]')).toBeTruthy();
+  expect(header?.querySelector('a[href="/destinos"]')).toBeTruthy();
+  expect(header?.querySelector('a[href="/registro"]')).toBeTruthy();
+  expect(document.querySelector('.site-footer')?.textContent).toMatch(/©\s*2026\s*Paradisse App/i);
+});
+
+test('renders the complete Nosotros composition with iconography', () => {
+  renderApp('/nosotros');
+
+  expect(document.querySelector('.about-hero__backdrop')?.getAttribute('src')).toBe('/assets/suroeste-landscape.webp');
+  expect(document.querySelector('.about-story__image')).toBeTruthy();
+  expect(document.querySelector('.about-purpose__grid')).toBeTruthy();
+  expect(document.querySelectorAll('.about-differentiators__grid article')).toHaveLength(3);
+  expect(document.querySelectorAll('.about-card-icon svg').length).toBeGreaterThanOrEqual(5);
+  expect(document.body.textContent).toMatch(/nacimos para que viajar vuelva a sentirse personal/i);
 });

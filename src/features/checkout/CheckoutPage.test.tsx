@@ -49,6 +49,47 @@ test('offers separate registration and login routes when there is no session', (
   act(() => root.unmount());
 });
 
+test('shows reservation context without exposing checkout controls before authentication', () => {
+  const { container, root } = renderCheckout();
+  const guestCard = container.querySelector('.checkout-card--guest');
+  const guestHeader = container.querySelector('.checkout-card--guest .checkout-header');
+  const planSummary = container.querySelector('[aria-label="Resumen de tu selección"]');
+  const localNote = container.querySelector('.checkout-guest-note');
+
+  expect(guestCard).toBeTruthy();
+  expect(guestHeader?.querySelector('h1')?.textContent).toMatch(/inicia sesión para confirmar tu visita/i);
+  expect(planSummary?.textContent).toMatch(/tu selección/i);
+  expect(planSummary?.textContent).toMatch(/aún no has agregado experiencias/i);
+  expect(localNote?.textContent).toMatch(/guardaremos tu selección/i);
+  expect(container.querySelector('form')).toBeNull();
+  expect(container.querySelector('input[name="payment-method"]')).toBeNull();
+
+  act(() => root.unmount());
+});
+
+test('shows the number of selected experiences before asking for authentication', () => {
+  const storage = createStorageAdapter();
+  createPlanService(storage).addExperience('jardin-cafe');
+
+  const { container, root } = renderCheckout();
+  const planSummary = container.querySelector('[aria-label="Resumen de tu selección"]');
+
+  expect(planSummary?.textContent).toMatch(/1 experiencia seleccionada/i);
+
+  act(() => root.unmount());
+});
+
+test('shows selected Itagui sites as part of the local visit plan', () => {
+  const storage = createStorageAdapter();
+  createPlanService(storage).addSite('sena-calatrava');
+
+  const { container, root } = renderCheckout();
+  const planSummary = container.querySelector('[aria-label="Resumen de tu selección"]');
+
+  expect(planSummary?.textContent).toMatch(/sena de calatrava/i);
+  act(() => root.unmount());
+});
+
 test('rehydrates a persisted local confirmation when checkout mounts again', () => {
   registerSession();
   const storage = createStorageAdapter();
@@ -73,6 +114,9 @@ test('rehydrates a persisted local confirmation when checkout mounts again', () 
   expect(name?.value).toBe('Ana Pérez');
   expect(email?.value).toBe('ana@example.com');
   expect(phone?.value).toBe('3001234567');
+  expect(name?.getAttribute('autocomplete')).toBe('name');
+  expect(email?.getAttribute('autocomplete')).toBe('email');
+  expect(phone?.getAttribute('autocomplete')).toBe('tel');
   act(() => root.unmount());
 });
 

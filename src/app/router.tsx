@@ -8,6 +8,7 @@ import { DestinationPage } from '../features/destinations/DestinationPage';
 import { DestinationsPage } from '../features/destinations/DestinationsPage';
 import { GuidePage } from '../features/guides/GuidePage';
 import { HomePage } from '../features/home/HomePage';
+import { NavegacionProvider } from '../features/navigation/NavigationContext';
 
 export type RoutePath =
   | '/'
@@ -30,19 +31,21 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
 
   return (
     <BrowserRouter>
-      <PageLayout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/nosotros" element={<AboutPage />} />
-          <Route path="/destinos" element={<DestinationsPage />} />
-          <Route path="/destinos/:slug" element={<DestinationPage />} />
-          <Route path="/guias/:slug/:category" element={<GuidePage />} />
-          <Route path="/registro" element={<AuthPage mode="register" />} />
-          <Route path="/iniciar-sesion" element={<AuthPage mode="login" />} />
-          <Route path="/pago" element={<CheckoutPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </PageLayout>
+      <NavegacionProvider>
+        <PageLayout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/nosotros" element={<AboutPage />} />
+            <Route path="/destinos" element={<DestinationsPage />} />
+            <Route path="/destinos/:slug" element={<DestinationPage />} />
+            <Route path="/guias/:slug/:category" element={<GuidePage />} />
+            <Route path="/registro" element={<AuthPage mode="register" />} />
+            <Route path="/iniciar-sesion" element={<AuthPage mode="login" />} />
+            <Route path="/pago" element={<CheckoutPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </PageLayout>
+      </NavegacionProvider>
     </BrowserRouter>
   );
 }

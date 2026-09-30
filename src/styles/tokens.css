@@ -4,6 +4,9 @@
   --color-gold: #c79a4a;
   --color-ink: #24251f;
   --color-paper: #f8f6f0;
+  --color-night: #0b100e;
+  --color-sand: #ded8bd;
+  --color-sun: #f0d582;
   --radius-card: 1rem;
   --space-unit: 0.25rem;
   font-family: 'Montserrat', system-ui, sans-serif;

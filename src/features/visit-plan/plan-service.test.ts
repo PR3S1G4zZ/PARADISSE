@@ -34,3 +34,29 @@ test('adding the same experience twice persists it once', () => {
 
   expect(plan.getPlan().experiences).toEqual(['jardin-cafe']);
 });
+
+test('hydrates legacy plans with an empty sites collection', () => {
+  const storage = memoryStorage();
+  storage.set('paradisse.plan', {
+    favorites: ['jardin'],
+    municipalities: ['jardin'],
+    experiences: ['jardin-cafe'],
+  });
+  const plan = createPlanService(storage);
+
+  expect(plan.getPlan()).toEqual({
+    favorites: ['jardin'],
+    municipalities: ['jardin'],
+    sites: [],
+    experiences: ['jardin-cafe'],
+  });
+});
+
+test('adds a site to the visit plan without duplicating it', () => {
+  const plan = createPlanService(memoryStorage());
+
+  plan.addSite('sena-calatrava');
+  plan.addSite('sena-calatrava');
+
+  expect(plan.getPlan().sites).toEqual(['sena-calatrava']);
+});

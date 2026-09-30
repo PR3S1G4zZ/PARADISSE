@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { FiArrowRight, FiCheckCircle, FiLock } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { guides } from '../../data/guides';
 import { municipalities } from '../../data/municipalities';
+import { getDestination } from '../destinations/destination-service';
 import { createStorageAdapter } from '../../shared/lib/storage';
 import type { Experience } from '../../shared/types/domain';
 import {
@@ -32,6 +34,10 @@ export function CheckoutPage() {
   const checkout = useMemo(() => createCheckoutService(createStorageAdapter()), []);
   const session = checkout.getSession();
   const plan = checkout.getPlan();
+  const selectedDestinations = [
+    ...plan.municipalities.map((slug) => getDestination(slug)).filter(Boolean),
+    ...plan.sites.map((slug) => getDestination(slug)).filter(Boolean),
+  ];
   const selectedExperiences = plan.experiences.map((id) => experienceCatalog.find((experience) => experience.id === id) ?? {
     id,
     title: 'Experiencia seleccionada',
@@ -47,13 +53,47 @@ export function CheckoutPage() {
   if (!session) {
     return (
       <section className="checkout-page checkout-page--unauthenticated" aria-labelledby="checkout-title">
-        <div className="checkout-card">
-          <p className="checkout-eyebrow">Reserva PARADISSE</p>
-          <h1 id="checkout-title">Inicia sesión para confirmar tu visita</h1>
-          <p>Guardaremos tu selección en este dispositivo y te mostraremos una confirmación local.</p>
-          <div className="checkout-actions">
-            <Link className="checkout-link" to="/registro">Crear una cuenta</Link>
-            <Link className="checkout-text-link" to="/iniciar-sesion">Ya tengo una cuenta</Link>
+        <div className="checkout-card checkout-card--guest">
+          <div className="checkout-guest-copy">
+            <header className="checkout-header">
+              <p className="checkout-eyebrow">Reserva PARADISSE</p>
+              <h1 id="checkout-title">Inicia sesión para confirmar tu visita</h1>
+              <p>Guardaremos tu selección en este dispositivo y te mostraremos una confirmación local.</p>
+            </header>
+
+            <div className="checkout-guest-summary" aria-label="Resumen de tu selección">
+              <span className="checkout-guest-summary__icon" aria-hidden="true"><FiCheckCircle /></span>
+              <div>
+                <span className="checkout-guest-summary__label">Tu selección</span>
+                <strong>
+                  {selectedExperiences.length > 0
+                    ? `${selectedExperiences.length} ${selectedExperiences.length === 1 ? 'experiencia' : 'experiencias'} seleccionada${selectedExperiences.length === 1 ? '' : 's'}`
+                    : selectedDestinations.length > 0
+                      ? `${selectedDestinations.length} ${selectedDestinations.length === 1 ? 'destino' : 'destinos'} seleccionado${selectedDestinations.length === 1 ? '' : 's'}`
+                      : 'Aún no has agregado experiencias'}
+                </strong>
+                <small>
+                  {selectedExperiences.length > 0
+                    ? selectedExperiences.slice(0, 2).map((experience) => experience.title).join(' · ')
+                    : selectedDestinations.length > 0
+                      ? selectedDestinations.slice(0, 2).map((destination) => destination!.name).join(' · ')
+                      : 'Explora destinos y agrega experiencias a tu plan cuando quieras.'}
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <div className="checkout-guest-actions">
+            <div className="checkout-actions">
+              <Link className="checkout-link" to="/registro">
+                Crear una cuenta <FiArrowRight aria-hidden="true" />
+              </Link>
+              <Link className="checkout-text-link" to="/iniciar-sesion">Ya tengo una cuenta</Link>
+            </div>
+            <p className="checkout-guest-note">
+              <FiLock aria-hidden="true" />
+              <span>Sin cobros ahora. Guardaremos tu selección localmente.</span>
+            </p>
           </div>
         </div>
       </section>
@@ -77,8 +117,18 @@ export function CheckoutPage() {
         <section className="checkout-summary" aria-labelledby="plan-title">
           <div className="checkout-section-heading">
             <h2 id="plan-title">Tu plan</h2>
-            <span>{selectedExperiences.length} {selectedExperiences.length === 1 ? 'experiencia' : 'experiencias'}</span>
+            <span>{selectedDestinations.length + selectedExperiences.length} elementos</span>
           </div>
+          {selectedDestinations.length > 0 && (
+            <div className="checkout-destinations" aria-label="Destinos seleccionados">
+              <strong>Destinos seleccionados</strong>
+              <ul>
+                {selectedDestinations.map((destination) => (
+                  <li key={destination!.slug}>{destination!.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {selectedExperiences.length > 0 ? (
             <ul>
               {selectedExperiences.map((experience) => (
@@ -125,6 +175,7 @@ export function CheckoutPage() {
               <input
                 name="name"
                 onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
+                autoComplete="name"
                 required
                 type="text"
                 value={contact.name}
@@ -135,6 +186,7 @@ export function CheckoutPage() {
               <input
                 name="email"
                 onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))}
+                autoComplete="email"
                 required
                 type="email"
                 value={contact.email}
@@ -145,6 +197,7 @@ export function CheckoutPage() {
               <input
                 name="phone"
                 onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))}
+                autoComplete="tel"
                 required
                 type="tel"
                 value={contact.phone}

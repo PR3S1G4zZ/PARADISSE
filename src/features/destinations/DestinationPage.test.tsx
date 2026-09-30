@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { NavegacionProvider } from '../navigation/NavigationContext';
 import { DestinationPage } from './DestinationPage';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -13,10 +14,14 @@ function renderDestination(slug = 'jardin') {
   act(() => {
     root.render(
       <MemoryRouter initialEntries={[`/destinos/${slug}`]}>
-        <Routes>
-          <Route path="/destinos/:slug" element={<DestinationPage />} />
-          <Route path="/pago" element={<h1>Pagar visita</h1>} />
-        </Routes>
+        <NavegacionProvider>
+          <Routes>
+            <Route path="/destinos/:slug" element={<DestinationPage />} />
+            <Route path="/destinos" element={<h1>Catálogo de destinos</h1>} />
+            <Route path="/guias/jardin/cultura-historia" element={<h1>Guía de cultura e historia</h1>} />
+            <Route path="/pago" element={<h1>Pagar visita</h1>} />
+          </Routes>
+        </NavegacionProvider>
       </MemoryRouter>,
     );
   });
@@ -29,6 +34,13 @@ function buttonNamed(container: HTMLElement, name: RegExp): HTMLButtonElement {
     .find((candidate) => name.test(candidate.textContent ?? ''));
   if (!button) throw new Error(`Unable to find button matching ${name}`);
   return button;
+}
+
+function linkNamed(container: HTMLElement, name: RegExp): HTMLAnchorElement {
+  const link = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href]'))
+    .find((candidate) => name.test(candidate.textContent ?? ''));
+  if (!link) throw new Error(`Unable to find link matching ${name}`);
+  return link;
 }
 
 afterEach(() => {
@@ -82,5 +94,91 @@ test('does not expose empty guide routes for a destination without guides', () =
 
   expect(container.querySelectorAll('.guide-links a')).toHaveLength(0);
   expect(container.textContent).toMatch(/todavía no hay guías publicadas para jericó/i);
+  act(() => root.unmount());
+});
+
+test('returns from a valid destination detail to the destinations catalogue', () => {
+  const { container, root } = renderDestination();
+
+  try {
+    const backLink = linkNamed(container, /volver a destinos/i);
+    expect(backLink.getAttribute('href')).toBe('/destinos');
+
+    act(() => {
+      backLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(container.textContent).toMatch(/catálogo de destinos/i);
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test('presents the destination identity, location, description, and planning action', () => {
+  const { container, root } = renderDestination();
+
+  try {
+    const content = container.querySelector<HTMLElement>('.destination-detail__content');
+    expect(content).toBeTruthy();
+    expect(content?.querySelector('h1')?.textContent).toBe('Jardín');
+    expect(content?.textContent).toMatch(/antioquia/i);
+    expect(content?.querySelector('.destination-detail__description')?.textContent)
+      .toMatch(/balcones floridos, café de origen/i);
+    expect(buttonNamed(content!, /planear esta visita/i)).toBeTruthy();
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test('groups destination experiences and guide links into named sections', () => {
+  const { container, root } = renderDestination();
+
+  try {
+    const experiences = container.querySelector<HTMLElement>(
+      'section[aria-labelledby="experiences-title"]',
+    );
+    expect(experiences?.querySelector('h2')?.textContent)
+      .toMatch(/experiencias para quedarte un poco más/i);
+    expect(experiences?.querySelectorAll('.experience-card')).toHaveLength(2);
+    expect(experiences?.textContent).toMatch(/ruta de café de origen/i);
+
+    const guides = container.querySelector<HTMLElement>('section[aria-labelledby="guides-title"]');
+    expect(guides?.querySelector('h2')?.textContent).toMatch(/guías para inspirar el viaje/i);
+    expect(Array.from(guides?.querySelectorAll<HTMLAnchorElement>('a') ?? [])
+      .map((link) => link.getAttribute('href')))
+      .toEqual(['/guias/jardin/cultura-historia', '/guias/jardin/gastronomia']);
+
+    const cultureGuide = linkNamed(guides!, /cultura e historia/i);
+    act(() => {
+      cultureGuide.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    expect(container.textContent).toMatch(/guía de cultura e historia/i);
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test('opens the route modal from a destination detail', () => {
+  const { container, root } = renderDestination('sena-calatrava');
+
+  act(() => {
+    buttonNamed(container, /cómo llegar/i).click();
+  });
+
+  expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+  expect(container.textContent).toMatch(/cómo llegar a sena de calatrava/i);
+  act(() => root.unmount());
+});
+
+test('releases the detail map before opening live navigation', () => {
+  const { container, root } = renderDestination('sena-calatrava');
+
+  expect(container.querySelector('[data-map-mode="detail"]')).toBeTruthy();
+  act(() => {
+    buttonNamed(container, /cómo llegar/i).click();
+  });
+
+  expect(container.querySelector('[role="dialog"]')).toBeTruthy();
+  expect(container.querySelector('[data-map-mode="detail"]')).toBeNull();
   act(() => root.unmount());
 });
