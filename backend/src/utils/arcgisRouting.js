@@ -10,12 +10,28 @@ export const TRAVEL_MODES_TTL_MS = 6 * 60 * 60 * 1000;
 export const EMPTY_TRAVEL_MODES_TTL_MS = 60 * 1000;
 
 let tokenCache = { value: null, expiresAt: 0 };
-let modesCache = { value: null, expiresAt: 0 };
+let modesCache = { value: null, failure: null, expiresAt: 0 };
 
 export function resetArcgisRoutingCaches() {
   tokenCache = { value: null, expiresAt: 0 };
-  modesCache = { value: null, expiresAt: 0 };
+  modesCache = { value: null, failure: null, expiresAt: 0 };
 }
+
+const ARCGIS_MESSAGE_LIMIT = 120;
+const ARCGIS_STAGES = new Set(['oauth', 'travel-modes', 'route']);
+// OAuth token errors often arrive as `error: "invalid_client"` with no
+// `error.message`. Only these codes are copied; free-form values are not.
+const OAUTH_ERROR_CODES = new Set([
+  'invalid_client',
+  'invalid_request',
+  'invalid_grant',
+  'unauthorized_client',
+  'unsupported_grant_type',
+  'invalid_scope',
+  'access_denied',
+  'server_error',
+  'temporarily_unavailable',
+]);
 
 const safeErrorCategory = (error) => {
   const name = String(error?.name || '').toLowerCase();
@@ -26,6 +42,111 @@ const safeErrorCategory = (error) => {
   return 'provider';
 };
 
+function allowlistedOAuthError(value) {
+  if (typeof value !== 'string') return undefined;
+  const code = value.trim();
+  return OAUTH_ERROR_CODES.has(code) ? code : undefined;
+}
+
+function collectSecretValues(params) {
+  const values = [
+    config.arcgis.apiKey,
+    config.arcgis.basemapApiKey,
+    config.arcgis.clientId,
+    config.arcgis.clientSecret,
+  ];
+  if (params && typeof params === 'object') {
+    for (const key of ['token', 'client_secret', 'client_id', 'api_key', 'apikey', 'access_token', 'key']) {
+      values.push(params[key]);
+    }
+  }
+  const secrets = [];
+  for (const value of values) {
+    if (typeof value !== 'string' || value.length < 8) continue;
+    secrets.push(value);
+    try {
+      const encoded = encodeURIComponent(value);
+      if (encoded !== value) secrets.push(encoded);
+    } catch {
+      // Ignore values that cannot be encoded.
+    }
+  }
+  return [...new Set(secrets)].sort((left, right) => right.length - left.length);
+}
+
+function sanitizeArcgisMessage(raw, params) {
+  try {
+    let message = String(raw).replace(/\s+/g, ' ').trim();
+    if (!message) return undefined;
+    message = message.replace(/https?:\/\/[^\s]+/gi, (url) => {
+      const query = url.search(/[?#]/);
+      return query === -1 ? url : url.slice(0, query);
+    });
+    for (const secret of collectSecretValues(params)) {
+      message = message.split(secret).join('[redacted]');
+    }
+    message = message
+      .replace(/\b(access_token|refresh_token|id_token|client_secret|client_id|api_key|apikey|token|key)=([^&\s]+)/gi, '$1=[redacted]')
+      .replace(/\b(bearer)\s+\S+/gi, '$1 [redacted]');
+    message = message.replace(/\s+/g, ' ').trim();
+    if (!message) return undefined;
+    return message.slice(0, ARCGIS_MESSAGE_LIMIT);
+  } catch {
+    return undefined;
+  }
+}
+
+function arcgisErrorCode(body) {
+  const error = body?.error;
+  if (!error || typeof error !== 'object' || Array.isArray(error)) return undefined;
+  const code = error.code;
+  if (typeof code === 'number' && Number.isInteger(code)) return code;
+  if (typeof code === 'string' && /^-?\d+$/.test(code.trim())) {
+    const parsed = Number(code.trim());
+    return Number.isInteger(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function arcgisErrorMessage(body, params) {
+  const error = body?.error;
+  if (error && typeof error === 'object' && !Array.isArray(error) && typeof error.message === 'string') {
+    const message = sanitizeArcgisMessage(error.message, params);
+    if (message) return message;
+  }
+  if (typeof error === 'string') return allowlistedOAuthError(error);
+  return allowlistedOAuthError(error?.error);
+}
+
+function arcgisFailureFrom({ stage, status, body, params }) {
+  const failure = {};
+  if (ARCGIS_STAGES.has(stage)) failure.stage = stage;
+  if (Number.isInteger(status)) failure.status = status;
+  const code = arcgisErrorCode(body);
+  if (code != null) failure.code = code;
+  const message = arcgisErrorMessage(body, params);
+  if (message) failure.message = message;
+  const oauthError = typeof body?.error === 'string'
+    ? allowlistedOAuthError(body.error)
+    : allowlistedOAuthError(body?.error?.error);
+  if (oauthError && oauthError !== message) failure.oauthError = oauthError;
+  return failure;
+}
+
+export function arcgisFailureLog(error) {
+  const failure = error?.arcgisFailure;
+  if (!failure || typeof failure !== 'object') return {};
+  const log = {};
+  if (ARCGIS_STAGES.has(failure.stage)) log.stage = failure.stage;
+  if (Number.isInteger(failure.status)) log.status = failure.status;
+  if (Number.isInteger(failure.code)) log.code = failure.code;
+  if (typeof failure.message === 'string' && failure.message) {
+    log.message = failure.message.slice(0, ARCGIS_MESSAGE_LIMIT);
+  }
+  if (OAUTH_ERROR_CODES.has(failure.oauthError)) log.oauthError = failure.oauthError;
+  return log;
+}
+
 function headers() {
   return {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -33,7 +154,7 @@ function headers() {
   };
 }
 
-async function requestJson(url, params) {
+async function requestJson(url, params, stage) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.routingTimeoutMs);
   try {
@@ -45,9 +166,21 @@ async function requestJson(url, params) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok || body.error) {
-      throw new Error(`ArcGIS HTTP ${response.status || 502}`);
+      const status = response.status || 502;
+      const error = new Error(`ArcGIS HTTP ${status}`);
+      error.arcgisFailure = arcgisFailureFrom({ stage, status, body, params });
+      throw error;
     }
     return body;
+  } catch (error) {
+    if (!error?.arcgisFailure && ARCGIS_STAGES.has(stage) && error && typeof error === 'object') {
+      try {
+        error.arcgisFailure = { stage };
+      } catch {
+        // Sealed exceptions still propagate; the stage stays off the log.
+      }
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -65,7 +198,7 @@ async function oauthAccessToken() {
     expiration: '20160',
     f: 'json',
     ...(config.arcgis.referer ? { referer: config.arcgis.referer } : {}),
-  });
+  }, 'oauth');
   if (!body.access_token) throw new Error('ArcGIS token missing');
   tokenCache = { value: body.access_token, expiresAt: Date.now() + (Number(body.expires_in) || 3600) * 1000 };
   return tokenCache.value;
@@ -84,38 +217,55 @@ export async function getArcgisBasemapToken() {
   throw new Error('ArcGIS basemap credential unavailable');
 }
 
-async function travelModes(token) {
-  if (Array.isArray(modesCache.value) && Date.now() < modesCache.expiresAt) return modesCache.value;
+async function readTravelModes(token) {
+  if (Array.isArray(modesCache.value) && Date.now() < modesCache.expiresAt) {
+    return { modes: modesCache.value, failure: modesCache.failure || null };
+  }
   let modes = [];
+  let failure = null;
 
   // Route_World exposes the complete objects directly in its service
   // metadata. This is the least surprising source and avoids guessing a
   // travel mode by name.
   try {
-    const body = await requestJson(ROUTE_SERVICE, { f: 'json', token });
+    const body = await requestJson(ROUTE_SERVICE, { f: 'json', token }, 'travel-modes');
     if (Array.isArray(body.supportedTravelModes)) modes = body.supportedTravelModes;
-  } catch {
+  } catch (error) {
     // The utility endpoint below is an explicit provider fallback.
+    failure = error;
   }
 
   if (modes.length === 0) {
     try {
-      const body = await requestJson(TRAVEL_MODES_SERVICE, { f: 'json', token });
+      const body = await requestJson(TRAVEL_MODES_SERVICE, { f: 'json', token }, 'travel-modes');
       const table = body.results?.find((result) => result.paramName === 'supportedTravelModes');
       modes = (table?.value?.features || []).map((feature) => {
         try { return JSON.parse(feature.attributes.TravelMode); } catch { return null; }
       }).filter(Boolean);
+      failure = null;
     } catch (error) {
-      console.warn('[arcgis] travel modes unavailable', { category: safeErrorCategory(error) });
+      failure = error;
+      console.warn('[arcgis] travel modes unavailable', {
+        category: safeErrorCategory(error),
+        ...arcgisFailureLog(error),
+      });
     }
+  } else {
+    failure = null;
   }
 
   // An empty list is a transient provider failure, not a stable catalog.
   // Caching it for hours made walk solves omit travelMode and default to driving.
   modesCache = {
     value: modes,
+    failure: modes.length > 0 ? null : failure,
     expiresAt: Date.now() + (modes.length > 0 ? TRAVEL_MODES_TTL_MS : EMPTY_TRAVEL_MODES_TTL_MS),
   };
+  return { modes, failure: modesCache.failure };
+}
+
+async function travelModes(token) {
+  const { modes } = await readTravelModes(token);
   return modes;
 }
 
@@ -213,9 +363,13 @@ export function buildRouteStopAdjustments({ origen, destino }, puntos = [], stop
 
 export async function resolveArcgisRoute({ origen, destino, modo, nombreDestino }) {
   const token = await getArcgisAccessToken();
-  const travelMode = selectTravelMode(await travelModes(token), modo);
+  const { modes, failure: travelModeFailure } = await readTravelModes(token);
+  const travelMode = selectTravelMode(modes, modo);
   if (modo === 'walk' && !travelMode) {
-    throw new Error('ArcGIS walking travel mode unavailable');
+    const error = new Error('ArcGIS walking travel mode unavailable');
+    const diagnostics = arcgisFailureLog(travelModeFailure);
+    if (Object.keys(diagnostics).length > 0) error.arcgisFailure = diagnostics;
+    throw error;
   }
   const trafficRequested = modo === 'car';
   const trafficApplied = trafficRequested && TRAFFIC_IMPEDANCES.has(String(travelMode?.impedanceAttributeName || '').toLowerCase());
@@ -240,7 +394,7 @@ export async function resolveArcgisRoute({ origen, destino, modo, nombreDestino 
     ...(travelMode ? { travelMode: JSON.stringify(travelMode) } : {}),
     ...(trafficApplied ? { startTime: 'now', startTimeIsUTC: 'false' } : {}),
   };
-  const body = await requestJson(`${ROUTE_SERVICE}/solve`, params);
+  const body = await requestJson(`${ROUTE_SERVICE}/solve`, params, 'route');
   const feature = body.routes?.features?.[0];
   if (!feature?.geometry?.paths?.length) throw new Error('ArcGIS route geometry missing');
   const direction = body.directions?.[0];

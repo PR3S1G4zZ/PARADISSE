@@ -1,5 +1,5 @@
 import { hasArcgisRoutingCredentials } from '../config.js';
-import { buildRouteStopAdjustments, resolveArcgisRoute } from '../utils/arcgisRouting.js';
+import { arcgisFailureLog, buildRouteStopAdjustments, resolveArcgisRoute } from '../utils/arcgisRouting.js';
 import { resolveOsrmRoute } from '../utils/osrmRouting.js';
 
 export class RouteRequestError extends Error {
@@ -29,8 +29,8 @@ export const safeProviderFailureCategory = (error) => {
   return 'provider';
 };
 
-const reportProviderFailure = ({ provider, category }) => {
-  console.warn('[routing] provider failed', { provider, category });
+const reportProviderFailure = (report) => {
+  console.warn('[routing] provider failed', report);
 };
 
 const validPoint = (point) => point
@@ -85,7 +85,11 @@ export function createRouteResolver({
 } = {}) {
   const notifyFailure = (provider, error) => {
     try {
-      onProviderFailure({ provider, category: safeProviderFailureCategory(error) });
+      onProviderFailure({
+        provider,
+        category: safeProviderFailureCategory(error),
+        ...arcgisFailureLog(error),
+      });
     } catch {
       // Observability must never prevent the configured fallback from running.
     }
